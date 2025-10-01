@@ -1,0 +1,118 @@
+# Rust
+/target/
+**/target/
+Cargo.lock
+**/*.rs.bk
+**/*.rs.swp
+*.pdb
+
+# Rust build artifacts
+*.rlib
+*.so
+*.dylib
+*.dll
+*.exe
+debug/
+release/
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+.env.local
+.env.bak
+config.yaml
+config.*.yaml
+!config.example.yaml
+*.secret
+*.key
+*.pem
+secrets/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+db_data/
+data/
+migrations/*.sql.bak
+
+# IDE and Editor
+.idea/
+.vscode/
+!.vscode/extensions.json
+!.vscode/tasks.json
+*.swp
+*.swo
+*~
+.vs/
+*.iml
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+*.log.*
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# Dependencies
+vendor/
+node_modules/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+tests/fixtures/temp/
+
+# Documentation
+/docs/_build/
+/docs/.doctrees/
+target/doc/
+
+# Docker
+.dockerignore.local
+docker-compose.override.yml
+volumes/
+
+# Cache
+.cache/
+*.cache
+.cargo-cache/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Local development
+.local/
+*.local
+local/
+tmp/
+
+# Scripts (if intended)
+/scripts
