@@ -11,8 +11,10 @@ CREATE TABLE IF NOT EXISTS indexer_state (
 CREATE TABLE IF NOT EXISTS event_processing_stats (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL,
-    processed_count BIGINT NOT NULL DEFAULT 0,
-    error_count BIGINT NOT NULL DEFAULT 0,
+    total_processed BIGINT DEFAULT 0,
+    successful BIGINT DEFAULT 0,
+    errors BIGINT DEFAULT 0,
+    avg_duration_ms NUMERIC(10, 2) DEFAULT 0,
     last_processed_at TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

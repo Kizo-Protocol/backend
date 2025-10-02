@@ -1,3 +1,4 @@
+use bigdecimal::ToPrimitive;
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
@@ -289,7 +290,7 @@ impl UserYieldCalculator {
         let bets = rows
             .into_iter()
             .map(|row| ActiveBet {
-                amount: row.amount,
+                amount: row.amount.to_i64().unwrap_or(0),
                 created_at: row.inserted_at,
             })
             .collect();
@@ -315,7 +316,7 @@ impl UserYieldCalculator {
         let bets = rows
             .into_iter()
             .map(|row| ActiveBet {
-                amount: row.amount,
+                amount: row.amount.to_i64().unwrap_or(0),
                 created_at: row.inserted_at,
             })
             .collect();
