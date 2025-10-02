@@ -93,7 +93,7 @@ impl ChartService {
             // Convert BigDecimal to i64 for amount calculations
             let amount_i64 = bet.amount.to_i64().unwrap_or(0);
             // Parse position string as bool (assuming "true"/"false" or "yes"/"no")
-            let is_yes_position = bet.position.to_lowercase() == "true" || bet.position.to_lowercase() == "yes";
+            let is_yes_position = bet.position;
 
             if is_yes_position {
                 entry.yes_volume += amount_i64;

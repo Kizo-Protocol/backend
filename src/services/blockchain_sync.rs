@@ -46,8 +46,8 @@ impl BlockchainSyncService {
 
         let markets = sqlx::query!(
             r#"
-            SELECT m.market_id, m.question, m.end_time, m.creator_addr,
-                   m.transaction_version, m.status
+            SELECT m.market_id, m.question, m.end_time, 
+                   m.transaction_version, m.resolved as status
             FROM markets m
             LEFT JOIN markets_extended me ON m.market_id = me."blockchainMarketId"
             WHERE me.id IS NULL
@@ -271,7 +271,7 @@ impl BlockchainSyncService {
         let amount_decimal = sqlx::types::BigDecimal::from(amount);
         
         // Convert position string to boolean
-        let position_bool = bet.position.to_lowercase() == "true" || bet.position.to_lowercase() == "yes";
+        let position_bool = bet.position;
 
         sqlx::query!(
             r#"

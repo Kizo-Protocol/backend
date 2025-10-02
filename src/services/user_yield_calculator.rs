@@ -1,9 +1,8 @@
-use bigdecimal::ToPrimitive;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use anyhow::Result;
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use std::str::FromStr;
 use tracing::{debug, info};
 
 // Constants
@@ -35,7 +34,7 @@ struct ActiveBet {
 #[derive(Debug)]
 struct Protocol {
     name: String,
-    base_apy: String,
+    base_apy: BigDecimal,
 }
 
 pub struct UserYieldCalculator {
@@ -69,13 +68,13 @@ impl UserYieldCalculator {
         let best_protocol = protocols
             .iter()
             .max_by(|a, b| {
-                let apy_a = f64::from_str(&a.base_apy).unwrap_or(0.0);
-                let apy_b = f64::from_str(&b.base_apy).unwrap_or(0.0);
+                let apy_a = a.base_apy.to_f64().unwrap_or(0.0);
+                let apy_b = b.base_apy.to_f64().unwrap_or(0.0);
                 apy_a.partial_cmp(&apy_b).unwrap()
             })
             .unwrap();
 
-        let best_apy = f64::from_str(&best_protocol.base_apy).unwrap_or(0.0);
+        let best_apy = best_protocol.base_apy.to_f64().unwrap_or(0.0);
 
         debug!(
             "Using protocol '{}' with APY: {}",
@@ -124,7 +123,7 @@ impl UserYieldCalculator {
         // Create protocol breakdown
         let mut protocol_breakdown = Vec::new();
         for protocol in &protocols {
-            let protocol_apy = f64::from_str(&protocol.base_apy).unwrap_or(0.0);
+            let protocol_apy = protocol.base_apy.to_f64().unwrap_or(0.0);
 
             // For simplicity, assign all user's bets to the best protocol
             // In a real scenario, you'd track which protocol each bet uses
@@ -178,13 +177,13 @@ impl UserYieldCalculator {
         let best_protocol = protocols
             .iter()
             .max_by(|a, b| {
-                let apy_a = f64::from_str(&a.base_apy).unwrap_or(0.0);
-                let apy_b = f64::from_str(&b.base_apy).unwrap_or(0.0);
+                let apy_a = a.base_apy.to_f64().unwrap_or(0.0);
+                let apy_b = b.base_apy.to_f64().unwrap_or(0.0);
                 apy_a.partial_cmp(&apy_b).unwrap()
             })
             .unwrap();
 
-        let best_apy = f64::from_str(&best_protocol.base_apy).unwrap_or(0.0);
+        let best_apy = best_protocol.base_apy.to_f64().unwrap_or(0.0);
 
         // Fetch all active bets
         let active_bets = self.fetch_all_active_bets().await?;
@@ -219,7 +218,7 @@ impl UserYieldCalculator {
         // Create protocol breakdown
         let mut protocol_breakdown = Vec::new();
         for protocol in &protocols {
-            let protocol_apy = f64::from_str(&protocol.base_apy).unwrap_or(0.0);
+            let protocol_apy = protocol.base_apy.to_f64().unwrap_or(0.0);
 
             if protocol.name == best_protocol.name {
                 protocol_breakdown.push(ProtocolYieldBreakdown {
@@ -263,7 +262,7 @@ impl UserYieldCalculator {
             .into_iter()
             .map(|row| Protocol {
                 name: row.name,
-                base_apy: row.base_apy.to_string(),
+                base_apy: row.base_apy,
             })
             .collect();
 
@@ -279,7 +278,7 @@ impl UserYieldCalculator {
             FROM bets b
             INNER JOIN markets m ON b.market_id = m.market_id
             WHERE b.user_addr = $1
-              AND b.claimed IS NULL OR b.claimed = false
+              AND (b.claimed IS NULL OR b.claimed = false)
             ORDER BY b.inserted_at ASC
             "#,
             user_address
@@ -306,7 +305,7 @@ impl UserYieldCalculator {
                 b.inserted_at
             FROM bets b
             INNER JOIN markets m ON b.market_id = m.market_id
-            WHERE b.claimed IS NULL OR b.claimed = false
+            WHERE (b.claimed IS NULL OR b.claimed = false)
             ORDER BY b.inserted_at ASC
             "#
         )
@@ -328,7 +327,7 @@ impl UserYieldCalculator {
         let protocol_breakdown = protocols
             .iter()
             .map(|p| {
-                let apy = f64::from_str(&p.base_apy).unwrap_or(0.0);
+                let apy = p.base_apy.to_f64().unwrap_or(0.0);
                 ProtocolYieldBreakdown {
                     protocol: p.name.clone(),
                     total_amount: 0.0,
