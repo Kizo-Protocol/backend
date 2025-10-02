@@ -105,7 +105,7 @@ jobs:
       - name: '[INFO] : Build project'
         run: |
           echo "[INFO] : Building backend project"
-          cargo build --verbose
+          cargo build --release --bin kizo-server --verbose
           echo "[INFO] : Build completed successfully"
 
       - name: '[INFO] : Upload build artifacts'
@@ -114,7 +114,7 @@ jobs:
         with:
           name: backend-build-${{ needs.pre-checks.outputs.git-sha }}
           path: |
-            target/debug/kizo-server
+            target/release/kizo-server
             Cargo.toml
             Cargo.lock
           retention-days: 7
@@ -126,7 +126,7 @@ jobs:
     if: needs.pre-checks.outputs.should-deploy == 'true'
     environment:
       name: production
-      url: 'https://your-backend-domain.com'
+      url: 'https://app.kizo.bet'
     steps:
       - name: '[INFO] : Checkout repository'
         uses: actions/checkout@v4
@@ -162,25 +162,17 @@ jobs:
             echo "[INFO] : Pulling latest changes"
             git fetch origin && git reset --hard origin/master
             
-            echo "[INFO] : Building Docker image"
-            sudo docker build -t kizo-backend:latest .
+            echo "[INFO] : Building release binary"
+            cargo build --release --bin kizo-server
             
-            echo "[INFO] : Stopping old container"
-            sudo docker stop kizo-backend 2>/dev/null || true
-            sudo docker rm kizo-backend 2>/dev/null || true
-            
-            echo "[INFO] : Starting new container"
-            sudo docker run -d \
-              --name kizo-backend \
-              --network host \
-              --restart unless-stopped \
-              --env-file /home/kizovps/kizo/.env \
-              kizo-backend:latest
+            echo "[INFO] : Restarting backend with PM2"
+            pm2 restart kizo-backend || pm2 start ecosystem.config.js
             
             echo "[INFO] : Verifying deployment"
-            sleep 10
-            if sudo docker ps | grep -q kizo-backend; then
+            sleep 5
+            if pm2 list | grep -q kizo-backend; then
               echo "[INFO] : Backend deployment successful"
+              pm2 save
             else
               echo "[ERROR] : Backend deployment failed"
               exit 1
