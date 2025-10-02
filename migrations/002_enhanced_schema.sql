@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS markets_extended (
     current_yield NUMERIC(78, 18) NOT NULL DEFAULT 0,
     total_yield_earned_decimal NUMERIC(78, 18) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_markets_extended_market_id ON markets_extended(market_id);
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS bets_extended (
     status TEXT NOT NULL DEFAULT 'active',
     payout NUMERIC(78, 18),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     FOREIGN KEY (bet_id) REFERENCES bets(bet_id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS blockchain_events (
     processed BOOLEAN NOT NULL DEFAULT false,
     data TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     UNIQUE(event_type, blockchain_id)
 );
 
