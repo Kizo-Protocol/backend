@@ -1,6 +1,7 @@
--- Add missing tables and columns that backend services expect
+-- Add missing tables that backend services expect
+-- These are support tables for indexer state and event processing
 
--- Add missing indexer tables
+-- Indexer state tracking
 CREATE TABLE IF NOT EXISTS indexer_state (
     id SERIAL PRIMARY KEY,
     indexer_name TEXT NOT NULL UNIQUE,
@@ -8,6 +9,9 @@ CREATE TABLE IF NOT EXISTS indexer_state (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX IF NOT EXISTS idx_indexer_state_name ON indexer_state(indexer_name);
+
+-- Event processing statistics
 CREATE TABLE IF NOT EXISTS event_processing_stats (
     id SERIAL PRIMARY KEY,
     event_type TEXT NOT NULL,
@@ -20,10 +24,4 @@ CREATE TABLE IF NOT EXISTS event_processing_stats (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add missing columns to bets table for yield calculation
-ALTER TABLE bets ADD COLUMN IF NOT EXISTS claimed BOOLEAN DEFAULT FALSE;
-
--- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_indexer_state_name ON indexer_state(indexer_name);
 CREATE INDEX IF NOT EXISTS idx_event_stats_type ON event_processing_stats(event_type);
-CREATE INDEX IF NOT EXISTS idx_bets_claimed ON bets(claimed);
