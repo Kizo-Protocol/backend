@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  RUST_VERSION: 1.90
+  RUST_VERSION: "stable"
   CARGO_TERM_COLOR: always
   
 jobs:
@@ -56,7 +56,7 @@ jobs:
       - name: '[INFO] : Setup Rust toolchain'
         uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_VERSION }}
+          toolchain: stable
           components: rustfmt, clippy
 
       - name: '[INFO] : Setup Rust cache'
