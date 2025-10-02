@@ -57,7 +57,7 @@ impl ChartService {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| AppError::Database(anyhow::anyhow!(e)))?;
+        .map_err(|e: sqlx::Error| AppError::Database(anyhow::anyhow!(e)))?;
 
         debug!("Fetched {} bets for chart data", bets.len());
 
