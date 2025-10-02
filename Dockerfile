@@ -25,6 +25,8 @@ RUN service postgresql start && \
     su -c "createdb kizo_build" postgres && \
     su -c "psql -c \"CREATE USER kizo_user WITH PASSWORD 'kizo_pass';\"" postgres && \
     su -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE kizo_build TO kizo_user;\"" postgres && \
+    su -c "psql -c \"GRANT ALL ON SCHEMA public TO kizo_user;\"" postgres && \
+    su -c "psql -c \"GRANT CREATE ON SCHEMA public TO kizo_user;\"" postgres && \
     export DATABASE_URL="postgresql://kizo_user:kizo_pass@localhost/kizo_build" && \
     echo "DATABASE_URL=postgresql://kizo_user:kizo_pass@localhost/kizo_build" > .env && \
     cargo install sqlx-cli --no-default-features --features rustls,postgres && \
