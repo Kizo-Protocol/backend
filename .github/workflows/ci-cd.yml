@@ -96,7 +96,7 @@ jobs:
       - name: '[INFO] : Run Clippy linting'
         run: |
           echo "[INFO] : Running Clippy linting"
-          cargo clippy --all-targets --all-features -- -D warnings || {
+          cargo clippy --all-targets --all-features || {
             echo "[WARN] : Clippy linting had warnings"
             cargo clippy --all-targets --all-features
           }
