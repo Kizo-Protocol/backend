@@ -1,29 +1,35 @@
-# Build stage
+# Build stage with database setup
 FROM rustlang/rust:nightly as builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies including PostgreSQL
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libpq-dev \
+    postgresql \
+    postgresql-contrib \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests and create a dummy .env to prevent connection attempts
+# Copy manifests first to cache dependencies
 COPY Cargo.toml Cargo.lock* ./
-RUN echo "DATABASE_URL=postgresql://user:pass@localhost/db" > .env
 
-# Copy source code
+# Copy source code and migrations
 COPY src ./src
 COPY migrations ./migrations
 
-# Copy .sqlx directory for offline SQLx compilation
-COPY .sqlx ./.sqlx
-
-# Build the application in release mode with offline mode for SQLx
-ENV SQLX_OFFLINE=true
-RUN cargo build --release --bin kizo-server
+# Start PostgreSQL and set up database for SQLx
+RUN service postgresql start && \
+    sudo -u postgres createdb kizo_build && \
+    sudo -u postgres psql -c "CREATE USER kizo_user WITH PASSWORD 'kizo_pass';" && \
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE kizo_build TO kizo_user;" && \
+    export DATABASE_URL="postgresql://kizo_user:kizo_pass@localhost/kizo_build" && \
+    echo "DATABASE_URL=postgresql://kizo_user:kizo_pass@localhost/kizo_build" > .env && \
+    cargo install sqlx-cli --no-default-features --features rustls,postgres && \
+    sqlx migrate run && \
+    cargo build --release --bin kizo-server && \
+    service postgresql stop
 
 # Runtime stage
 FROM debian:bookworm-slim
