@@ -154,6 +154,10 @@ jobs:
             echo "[INFO] : Starting backend deployment"
             echo "[INFO] : Git SHA: ${{ needs.pre-checks.outputs.git-sha }}"
             
+            # Source NVM for PM2
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
             # Source Cargo environment
             source $HOME/.cargo/env
             
