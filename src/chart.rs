@@ -1,4 +1,5 @@
-use sqlx::{types::BigDecimal, PgPool};
+use bigdecimal::BigDecimal;
+use sqlx::PgPool;
 use std::collections::HashMap;
 use tracing::debug;
 
