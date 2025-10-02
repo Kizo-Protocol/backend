@@ -83,7 +83,6 @@ CREATE TABLE IF NOT EXISTS markets_extended (
     total_yield_earned_decimal NUMERIC(78, 18) NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (market_id) REFERENCES markets(market_id)
 );
 
 CREATE INDEX idx_markets_extended_market_id ON markets_extended(market_id);
