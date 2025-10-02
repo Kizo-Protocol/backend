@@ -154,6 +154,9 @@ jobs:
             echo "[INFO] : Starting backend deployment"
             echo "[INFO] : Git SHA: ${{ needs.pre-checks.outputs.git-sha }}"
             
+            # Source Cargo environment
+            source $HOME/.cargo/env
+            
             cd /home/kizovps/kizo/backend || {
               echo "[FATAL] : Cannot access backend directory"
               exit 1
