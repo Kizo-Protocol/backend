@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO event_processing_log \n                (event_type, event_data, transaction_version, processing_status, error_message, processing_duration_ms)\n            VALUES ($1, $2, $3, $4, $5, $6)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Jsonb",
+        "Int8",
+        "Varchar",
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8dc402a5b4d76231aec1368cccbcef02f9964ce0b94d06e94f82367e5dc62fc0"
+}

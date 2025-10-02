@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE bets_extended \n            SET status = 'claimed', \n                payout = $1,\n                \"updatedAt\" = NOW()\n            WHERE \"marketId\" = $2 \n              AND \"userId\" = $3 \n              AND \"blockchainBetId\" = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Numeric",
+        "Text",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc37c0988ace23a102175a14f7ed7f427216089b3599bd674dc1f7b4afd640b6"
+}

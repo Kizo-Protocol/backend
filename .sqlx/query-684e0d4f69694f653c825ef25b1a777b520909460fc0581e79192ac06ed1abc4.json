@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE bets_extended\n            SET status = 'won', \"updatedAt\" = NOW()\n            WHERE \"marketId\" IN (\n                SELECT id FROM markets_extended WHERE \"blockchainMarketId\" = $1\n            )\n            AND position = $2\n            AND status = 'active'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "684e0d4f69694f653c825ef25b1a777b520909460fc0581e79192ac06ed1abc4"
+}

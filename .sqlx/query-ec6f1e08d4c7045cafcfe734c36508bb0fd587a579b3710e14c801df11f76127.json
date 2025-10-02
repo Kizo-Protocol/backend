@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE markets_extended SET\n                    question = $1,\n                    description = $2,\n                    rules = $3,\n                    status = $4,\n                    probability = $5,\n                    volume = $6,\n                    \"openInterest\" = $7,\n                    \"endDate\" = $8,\n                    \"resolutionDate\" = $9,\n                    result = $10,\n                    link = $11,\n                    \"imageUrl\" = $12,\n                    \"updatedAt\" = CURRENT_TIMESTAMP\n                WHERE id = $13\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Timestamp",
+        "Timestamp",
+        "Bool",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ec6f1e08d4c7045cafcfe734c36508bb0fd587a579b3710e14c801df11f76127"
+}

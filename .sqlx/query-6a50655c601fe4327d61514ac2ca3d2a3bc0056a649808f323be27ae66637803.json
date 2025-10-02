@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE markets_extended me\n            SET \n                \"yesPoolSize\" = COALESCE(subq.yes_pool, 0),\n                \"noPoolSize\" = COALESCE(subq.no_pool, 0),\n                \"totalPoolSize\" = COALESCE(subq.total_pool, 0),\n                \"countYes\" = COALESCE(subq.yes_count, 0),\n                \"countNo\" = COALESCE(subq.no_count, 0),\n                volume = COALESCE(subq.total_pool, 0),\n                probability = CASE \n                    WHEN COALESCE(subq.total_pool, 0) > 0 THEN \n                        ROUND((COALESCE(subq.yes_pool, 0) / subq.total_pool * 100)::numeric)::int\n                    ELSE 50\n                END,\n                \"updatedAt\" = CURRENT_TIMESTAMP\n            FROM (\n                SELECT \n                    me2.\"blockchainMarketId\",\n                    SUM(CASE WHEN be.position = true THEN be.amount ELSE 0 END)::numeric as yes_pool,\n                    SUM(CASE WHEN be.position = false THEN be.amount ELSE 0 END)::numeric as no_pool,\n                    SUM(be.amount)::numeric as total_pool,\n                    COUNT(CASE WHEN be.position = true THEN 1 END)::int as yes_count,\n                    COUNT(CASE WHEN be.position = false THEN 1 END)::int as no_count\n                FROM markets_extended me2\n                LEFT JOIN bets_extended be ON be.\"marketId\" = me2.id AND be.status = 'active'\n                WHERE me2.\"blockchainMarketId\" = $1\n                GROUP BY me2.\"blockchainMarketId\"\n            ) subq\n            WHERE me.\"blockchainMarketId\" = subq.\"blockchainMarketId\"\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6a50655c601fe4327d61514ac2ca3d2a3bc0056a649808f323be27ae66637803"
+}

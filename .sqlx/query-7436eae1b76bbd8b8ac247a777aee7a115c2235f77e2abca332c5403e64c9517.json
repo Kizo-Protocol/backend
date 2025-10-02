@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO protocols (id, name, \"displayName\", \"baseApy\", \"isActive\", description, \"createdAt\", \"updatedAt\")\n                VALUES ($1, $2, $3, $4, true, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)\n                ON CONFLICT (name) DO UPDATE SET\n                    \"displayName\" = EXCLUDED.\"displayName\",\n                    \"baseApy\" = EXCLUDED.\"baseApy\",\n                    description = EXCLUDED.description,\n                    \"updatedAt\" = CURRENT_TIMESTAMP\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7436eae1b76bbd8b8ac247a777aee7a115c2235f77e2abca332c5403e64c9517"
+}

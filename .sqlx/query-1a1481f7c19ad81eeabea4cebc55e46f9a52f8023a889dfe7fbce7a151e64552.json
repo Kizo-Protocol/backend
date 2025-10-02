@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \"yesPoolSize\", \"noPoolSize\", \"totalPoolSize\"\n            FROM markets_extended\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "yesPoolSize",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 1,
+        "name": "noPoolSize",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "totalPoolSize",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "1a1481f7c19ad81eeabea4cebc55e46f9a52f8023a889dfe7fbce7a151e64552"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE markets_extended\n                SET \"endDate\" = $1, \"updatedAt\" = NOW()\n                WHERE \"blockchainMarketId\" = $2\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamp",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f5f0ae3c8ec3f90f6bcef0c9f829cc13dbff0154c8cefdf670a7e08e5fdd933"
+}

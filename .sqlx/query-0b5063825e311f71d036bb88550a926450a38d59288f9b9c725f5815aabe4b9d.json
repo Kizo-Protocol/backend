@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, \"blockchainMarketId\" as blockchain_market_id, \"marketId\" as market_id, \"adjTicker\" as adj_ticker,\n               platform, question, description, rules, status, probability, volume, \"openInterest\" as open_interest,\n               \"endDate\" as end_date, \"resolutionDate\" as resolution_date, result, link, \"imageUrl\" as image_url,\n               \"totalPoolSize\" as total_pool_size, \"yesPoolSize\" as yes_pool_size, \"noPoolSize\" as no_pool_size,\n               \"countYes\" as count_yes, \"countNo\" as count_no, \"currentYield\" as current_yield,\n               \"totalYieldEarned\" as total_yield_earned, \"createdAt\" as created_at, \"updatedAt\" as updated_at\n        FROM markets_extended\n        WHERE \"blockchainMarketId\" = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "blockchain_market_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "market_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "adj_ticker",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "platform",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "question",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "rules",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "probability",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 10,
+        "name": "volume",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "open_interest",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "end_date",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 13,
+        "name": "resolution_date",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 14,
+        "name": "result",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 15,
+        "name": "link",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "image_url",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "total_pool_size",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 18,
+        "name": "yes_pool_size",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "no_pool_size",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 20,
+        "name": "count_yes",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 21,
+        "name": "count_no",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 22,
+        "name": "current_yield",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 23,
+        "name": "total_yield_earned",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 24,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 25,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0b5063825e311f71d036bb88550a926450a38d59288f9b9c725f5815aabe4b9d"
+}

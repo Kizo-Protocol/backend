@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, \"blockchainMarketId\" as blockchain_market_id, status\n            FROM markets_extended\n            WHERE id = $1 OR \"adjTicker\" = $1 OR \"blockchainMarketId\"::text = $1\n            LIMIT 1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "blockchain_market_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "status",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "5e11f4fa6111ad0ae63d6b47201d702be8c8ee8b869c0e290a9cec9e2ce236ab"
+}

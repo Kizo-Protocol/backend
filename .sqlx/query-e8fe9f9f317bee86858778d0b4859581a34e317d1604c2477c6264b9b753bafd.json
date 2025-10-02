@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                event_type,\n                total_processed,\n                successful,\n                errors,\n                avg_duration_ms,\n                last_processed_at\n            FROM event_processing_stats\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "event_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "total_processed",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "successful",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "errors",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "avg_duration_ms",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "last_processed_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "e8fe9f9f317bee86858778d0b4859581a34e317d1604c2477c6264b9b753bafd"
+}

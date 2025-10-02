@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                bet_id,\n                position,\n                amount,\n                EXTRACT(EPOCH FROM inserted_at)::BIGINT as timestamp\n            FROM bets\n            WHERE market_id = $1\n                AND EXTRACT(EPOCH FROM inserted_at) BETWEEN $2 AND $3\n            ORDER BY inserted_at ASC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bet_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "position",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "timestamp",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "3358515229663939be8093fadf93339609ffa4cf5c04d4c1e06e469d4cf652f7"
+}

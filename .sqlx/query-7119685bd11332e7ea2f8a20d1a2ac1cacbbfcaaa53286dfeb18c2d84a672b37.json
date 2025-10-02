@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE markets_extended SET \"blockchainMarketId\" = $1 WHERE id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7119685bd11332e7ea2f8a20d1a2ac1cacbbfcaaa53286dfeb18c2d84a672b37"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE markets_extended\n            SET status = 'resolved',\n                result = $1,\n                \"totalYieldEarned\" = $2,\n                \"resolutionDate\" = NOW(),\n                \"updatedAt\" = NOW()\n            WHERE \"blockchainMarketId\" = $3\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Numeric",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "95c1511c9a244d6ec2da120f1cf04f2c2273a9d3c174cd255a24b94a4ef4126e"
+}

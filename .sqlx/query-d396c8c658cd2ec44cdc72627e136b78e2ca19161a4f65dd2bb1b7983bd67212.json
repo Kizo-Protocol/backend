@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT b.bet_id, b.user_addr, b.amount\n            FROM bets b\n            LEFT JOIN bets_extended be ON b.bet_id = be.\"blockchainBetId\"\n            WHERE be.id IS NULL\n            ORDER BY b.transaction_version DESC\n            LIMIT 500\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "bet_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_addr",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "amount",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d396c8c658cd2ec44cdc72627e136b78e2ca19161a4f65dd2bb1b7983bd67212"
+}

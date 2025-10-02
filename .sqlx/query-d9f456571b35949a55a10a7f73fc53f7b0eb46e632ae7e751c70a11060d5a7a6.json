@@ -1,0 +1,44 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                p.name as protocol,\n                p.\"displayName\" as display_name,\n                COALESCE(SUM(yr.amount), 0) as total_amount,\n                COALESCE(SUM(yr.yield), 0) as total_yield,\n                COALESCE(AVG(yr.apy), 0) as average_apy\n            FROM protocols p\n            LEFT JOIN yield_records yr ON p.id = yr.\"protocolId\"\n            WHERE p.\"isActive\" = true\n            GROUP BY p.id, p.name, p.\"displayName\"\n            ORDER BY total_yield DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "protocol",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "display_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "total_amount",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "total_yield",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "average_apy",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "d9f456571b35949a55a10a7f73fc53f7b0eb46e632ae7e751c70a11060d5a7a6"
+}

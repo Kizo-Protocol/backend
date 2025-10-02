@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, \"marketId\", question, description, \"endDate\"\n        FROM markets_extended\n        WHERE \"blockchainMarketId\" IS NULL\n        AND status = 'active'\n        ORDER BY \"createdAt\" DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "marketId",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "question",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "endDate",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "d1c2ecfb8c4b80b9ced20efb0a8e50ce21aac7c721dfcaef53e0c39fa19b43de"
+}
