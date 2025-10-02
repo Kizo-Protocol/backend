@@ -20,13 +20,15 @@ COPY Cargo.toml Cargo.lock* ./
 COPY src ./src
 COPY migrations ./migrations
 
-# Start PostgreSQL and set up database for SQLx
+# Start PostgreSQL and set up database for SQLx with proper permissions
 RUN service postgresql start && \
     su -c "createdb kizo_build" postgres && \
-    su -c "psql -c \"CREATE USER kizo_user WITH PASSWORD 'kizo_pass';\"" postgres && \
-    su -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE kizo_build TO kizo_user;\"" postgres && \
-    su -c "psql -c \"GRANT ALL ON SCHEMA public TO kizo_user;\"" postgres && \
-    su -c "psql -c \"GRANT CREATE ON SCHEMA public TO kizo_user;\"" postgres && \
+    su -c "psql -c \"CREATE USER kizo_user WITH PASSWORD 'kizo_pass' CREATEDB;\"" postgres && \
+    su -c "psql -c \"ALTER USER kizo_user CREATEDB;\"" postgres && \
+    su -c "psql -c \"ALTER DATABASE kizo_build OWNER TO kizo_user;\"" postgres && \
+    su -c "psql kizo_build -c \"GRANT ALL ON SCHEMA public TO kizo_user;\"" postgres && \
+    su -c "psql kizo_build -c \"GRANT CREATE ON SCHEMA public TO kizo_user;\"" postgres && \
+    su -c "psql kizo_build -c \"ALTER SCHEMA public OWNER TO kizo_user;\"" postgres && \
     export DATABASE_URL="postgresql://kizo_user:kizo_pass@localhost/kizo_build" && \
     echo "DATABASE_URL=postgresql://kizo_user:kizo_pass@localhost/kizo_build" > .env && \
     cargo install sqlx-cli --no-default-features --features rustls,postgres && \
