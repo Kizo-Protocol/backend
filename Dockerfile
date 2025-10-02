@@ -1,15 +1,16 @@
 # Build stage with database setup
-FROM rustlang/rust:nightly as builder
+FROM rustlang/rust:nightly AS builder
 
 WORKDIR /app
 
-# Install build dependencies including PostgreSQL
+# Install build dependencies including PostgreSQL and sudo
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     libpq-dev \
     postgresql \
     postgresql-contrib \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests first to cache dependencies
@@ -21,9 +22,9 @@ COPY migrations ./migrations
 
 # Start PostgreSQL and set up database for SQLx
 RUN service postgresql start && \
-    sudo -u postgres createdb kizo_build && \
-    sudo -u postgres psql -c "CREATE USER kizo_user WITH PASSWORD 'kizo_pass';" && \
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE kizo_build TO kizo_user;" && \
+    su -c "createdb kizo_build" postgres && \
+    su -c "psql -c \"CREATE USER kizo_user WITH PASSWORD 'kizo_pass';\"" postgres && \
+    su -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE kizo_build TO kizo_user;\"" postgres && \
     export DATABASE_URL="postgresql://kizo_user:kizo_pass@localhost/kizo_build" && \
     echo "DATABASE_URL=postgresql://kizo_user:kizo_pass@localhost/kizo_build" > .env && \
     cargo install sqlx-cli --no-default-features --features rustls,postgres && \
