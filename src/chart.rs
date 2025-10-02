@@ -1,3 +1,4 @@
+use bigdecimal::ToPrimitive;
 use bigdecimal::BigDecimal;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -89,14 +90,19 @@ impl ChartService {
                     no_total: 0,
                 });
 
-            if bet.position {
-                entry.yes_volume += bet.amount;
+            // Convert BigDecimal to i64 for amount calculations
+            let amount_i64 = bet.amount.to_i64().unwrap_or(0);
+            // Parse position string as bool (assuming "true"/"false" or "yes"/"no")
+            let is_yes_position = bet.position.to_lowercase() == "true" || bet.position.to_lowercase() == "yes";
+
+            if is_yes_position {
+                entry.yes_volume += amount_i64;
                 entry.yes_count += 1;
-                yes_total += bet.amount;
+                yes_total += amount_i64;
             } else {
-                entry.no_volume += bet.amount;
+                entry.no_volume += amount_i64;
                 entry.no_count += 1;
-                no_total += bet.amount;
+                no_total += amount_i64;
             }
 
             entry.yes_total = yes_total;

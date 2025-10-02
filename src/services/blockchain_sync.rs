@@ -1,4 +1,5 @@
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -45,8 +46,8 @@ impl BlockchainSyncService {
 
         let markets = sqlx::query!(
             r#"
-            SELECT m.market_id, m.question, m.end_time, m.yield_protocol_addr,
-                   m.transaction_version, m.resolved, m.outcome
+            SELECT m.market_id, m.question, m.end_time, m.creator_addr,
+                   m.transaction_version, m.status
             FROM markets m
             LEFT JOIN markets_extended me ON m.market_id = me."blockchainMarketId"
             WHERE me.id IS NULL
@@ -64,7 +65,7 @@ impl BlockchainSyncService {
 
             let market_id_val = market.market_id;
             match self
-                .create_extended_market(market.market_id, market.end_time)
+                .create_extended_market(market.market_id, chrono::Utc::now().timestamp())
                 .await
             {
                 Ok(_) => {
@@ -151,8 +152,11 @@ impl BlockchainSyncService {
                 }
             };
 
+            // Convert BigDecimal to i64 for amount
+            let amount_i64 = bet.amount.to_i64().unwrap_or(0);
+
             match self
-                .create_extended_bet(bet.bet_id, &user_id, bet.amount)
+                .create_extended_bet(bet.bet_id, &user_id, amount_i64)
                 .await
             {
                 Ok(_) => {
@@ -224,7 +228,7 @@ impl BlockchainSyncService {
         }
     }
 
-    async fn create_extended_bet(&self, bet_id: i64, user_id: &str, _amount: i64) -> Result<()> {
+    async fn create_extended_bet(&self, bet_id: i64, user_id: &str, amount: i64) -> Result<()> {
         let bet = sqlx::query!(
             r#"
             SELECT bet_id, market_id, user_addr, position, amount
@@ -264,7 +268,10 @@ impl BlockchainSyncService {
 
         let id = Uuid::new_v4().to_string();
         let odds = sqlx::types::BigDecimal::from(1);
-        let amount_decimal = sqlx::types::BigDecimal::from(bet.amount);
+        let amount_decimal = sqlx::types::BigDecimal::from(amount);
+        
+        // Convert position string to boolean
+        let position_bool = bet.position.to_lowercase() == "true" || bet.position.to_lowercase() == "yes";
 
         sqlx::query!(
             r#"
@@ -278,7 +285,7 @@ impl BlockchainSyncService {
             bet_id,
             user_id,
             market_uuid,
-            bet.position,
+            position_bool,
             amount_decimal,
             odds
         )
