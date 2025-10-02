@@ -1,6 +1,5 @@
 use axum::{extract::State, response::Json, routing::get, Router};
 use serde_json::{json, Value};
-use utoipa;
 
 use crate::db::Database;
 use crate::error::AppError;

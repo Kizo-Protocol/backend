@@ -269,7 +269,7 @@ impl BlockchainSyncService {
         let id = Uuid::new_v4().to_string();
         let odds = sqlx::types::BigDecimal::from(1);
         let amount_decimal = sqlx::types::BigDecimal::from(amount);
-        
+
         // Convert position string to boolean
         let position_bool = bet.position;
 

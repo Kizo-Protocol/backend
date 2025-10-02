@@ -371,12 +371,10 @@ impl BettingService {
             } else {
                 1.0
             }
+        } else if final_no_pool > 0.0 {
+            total_pool / final_no_pool
         } else {
-            if final_no_pool > 0.0 {
-                total_pool / final_no_pool
-            } else {
-                1.0
-            }
+            1.0
         };
 
         // Ensure odds are at least 1.0 (can't lose money on a winning bet)

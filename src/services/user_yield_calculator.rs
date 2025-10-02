@@ -1,5 +1,5 @@
-use bigdecimal::{BigDecimal, ToPrimitive};
 use anyhow::Result;
+use bigdecimal::{BigDecimal, ToPrimitive};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;

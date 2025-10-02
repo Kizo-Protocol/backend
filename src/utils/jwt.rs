@@ -70,8 +70,8 @@ impl JwtService {
     }
 
     pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {
-        if auth_header.starts_with("Bearer ") {
-            Some(&auth_header[7..])
+        if let Some(token) = auth_header.strip_prefix("Bearer ") {
+            Some(token)
         } else {
             None
         }
