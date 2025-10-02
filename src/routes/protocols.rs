@@ -9,23 +9,20 @@ use serde_json::{json, Value};
 use tracing::info;
 use utoipa;
 
-use crate::{
-    db::Database,
-    error::AppError,
-};
+use crate::{db::Database, error::AppError};
 pub fn create_protocols_router() -> Router<Database> {
-    
     let public_routes = Router::new()
         .route("/", get(get_protocols))
         .route("/:id", get(get_protocol_by_id))
         .route("/:id/yields", get(get_protocol_yields));
-    
-    
+
     let protected_routes = Router::new()
         .route("/:name/apy/update", post(update_protocol_apy))
         .route("/apy/update-all", post(update_all_protocols_apy))
-        .layer(middleware::from_fn(crate::middleware::auth::require_api_key));
-    
+        .layer(middleware::from_fn(
+            crate::middleware::auth::require_api_key,
+        ));
+
     public_routes.merge(protected_routes)
 }
 
@@ -132,7 +129,7 @@ async fn update_protocol_apy(
     info!("Updating APY from blockchain for protocol: {}", name);
 
     let yield_service = crate::services::YieldService::new(db.pool().clone());
-    
+
     let updated_apy = yield_service
         .update_protocol_apy_from_blockchain(&name)
         .await
@@ -149,24 +146,25 @@ async fn update_protocol_apy(
     })))
 }
 
-async fn update_all_protocols_apy(
-    State(db): State<Database>,
-) -> Result<Json<Value>, AppError> {
+async fn update_all_protocols_apy(State(db): State<Database>) -> Result<Json<Value>, AppError> {
     info!("Updating APY from blockchain for all protocols");
 
     let yield_service = crate::services::YieldService::new(db.pool().clone());
-    
+
     let results = yield_service
         .update_all_protocols_apy()
         .await
         .map_err(|e| AppError::Internal(format!("Failed to update APY: {}", e)))?;
 
-    let protocols: Vec<_> = results.iter().map(|(name, apy)| {
-        json!({
-            "protocol": name,
-            "apy": apy,
+    let protocols: Vec<_> = results
+        .iter()
+        .map(|(name, apy)| {
+            json!({
+                "protocol": name,
+                "apy": apy,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(Json(json!({
         "success": true,
@@ -176,15 +174,12 @@ async fn update_all_protocols_apy(
     })))
 }
 
-
-
 pub(super) async fn get_market_stats_by_identifier(
     State(db): State<Database>,
     Path(identifier): Path<String>,
 ) -> Result<Json<Value>, AppError> {
     info!("Fetching market stats by identifier: {}", identifier);
 
-    
     let market = sqlx::query!(
         r#"SELECT "blockchainMarketId" FROM markets_extended WHERE id = $1 OR "adjTicker" = $1 OR "blockchainMarketId"::text = $1 LIMIT 1"#,
         identifier
@@ -272,25 +267,27 @@ pub(super) async fn update_market_image(
     })))
 }
 
-
 pub(super) async fn place_bet_alias(
     State(db): State<Database>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-    
     let bet_request: PlaceBetRequest = serde_json::from_value(payload)
         .map_err(|e| AppError::BadRequest(format!("Invalid bet request: {}", e)))?;
     place_bet(State(db), Json(bet_request)).await
 }
 
-pub(super) async fn get_blockchain_status_alias(State(_db): State<Database>) -> Result<Json<Value>, AppError> {
-    
+pub(super) async fn get_blockchain_status_alias(
+    State(_db): State<Database>,
+) -> Result<Json<Value>, AppError> {
     use crate::services::aptos_contract::AptosContractService;
-    
-    let contract_service = AptosContractService::new()
-        .map_err(|e| AppError::Internal(format!("Failed to initialize blockchain service: {}", e)))?;
 
-    let status = contract_service.get_status().await
+    let contract_service = AptosContractService::new().map_err(|e| {
+        AppError::Internal(format!("Failed to initialize blockchain service: {}", e))
+    })?;
+
+    let status = contract_service
+        .get_status()
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to get blockchain status: {}", e)))?;
 
     Ok(Json(status))
@@ -300,31 +297,35 @@ pub(super) async fn create_blockchain_market_alias(
     State(_db): State<Database>,
     Json(payload): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
-    
     use crate::services::aptos_contract::{AptosContractService, CreateMarketParams};
 
-    let question = payload["question"].as_str()
+    let question = payload["question"]
+        .as_str()
         .ok_or_else(|| AppError::BadRequest("Question is required".to_string()))?;
-    let description = payload["description"].as_str()
+    let description = payload["description"]
+        .as_str()
         .ok_or_else(|| AppError::BadRequest("Description is required".to_string()))?;
-    let duration = payload["duration"].as_u64()
+    let duration = payload["duration"]
+        .as_u64()
         .ok_or_else(|| AppError::BadRequest("Duration is required".to_string()))?;
 
-    let contract_service = AptosContractService::new()
-        .map_err(|e| AppError::Internal(format!("Failed to initialize blockchain service: {}", e)))?;
+    let contract_service = AptosContractService::new().map_err(|e| {
+        AppError::Internal(format!("Failed to initialize blockchain service: {}", e))
+    })?;
 
-    
     let protocol_selector_addr = std::env::var("APTOS_PROTOCOL_SELECTOR_ADDR")
         .unwrap_or_else(|_| contract_service.module_address.clone());
 
-    let result = contract_service.create_market(CreateMarketParams {
-        question: question.to_string(),
-        description: description.to_string(),
-        duration_seconds: duration,
-        token_type: std::env::var("APTOS_TOKEN_TYPE")
-            .unwrap_or_else(|_| "0x1::aptos_coin::AptosCoin".to_string()),
-        protocol_selector_addr,
-    }).await
+    let result = contract_service
+        .create_market(CreateMarketParams {
+            question: question.to_string(),
+            description: description.to_string(),
+            duration_seconds: duration,
+            token_type: std::env::var("APTOS_TOKEN_TYPE")
+                .unwrap_or_else(|_| "0x1::aptos_coin::AptosCoin".to_string()),
+            protocol_selector_addr,
+        })
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to create market: {}", e)))?;
 
     Ok(Json(json!({
@@ -341,10 +342,8 @@ pub(super) async fn create_blockchain_market_alias(
     })))
 }
 
-
-
 use serde::Deserialize;
-use utoipa::{ToSchema, IntoParams};
+use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Deserialize, ToSchema, IntoParams)]
 pub struct BetFilters {
@@ -379,38 +378,37 @@ pub(super) async fn get_bets_with_filters(
 ) -> Result<Json<Value>, AppError> {
     info!("Fetching bets with filters: {:?}", filters);
 
-    
     let mut query_str = "SELECT * FROM bets".to_string();
     let mut count_str = "SELECT COUNT(*) FROM bets".to_string();
     let mut where_parts = Vec::new();
 
-    
     if filters.user_address.is_some() {
         where_parts.push("user_addr = $1".to_string());
     }
-    
+
     let mut next_param = if filters.user_address.is_some() { 2 } else { 1 };
     if filters.market_id.is_some() {
         where_parts.push(format!("market_id = ${}", next_param));
         next_param += 1;
     }
-    
+
     if filters.position.is_some() {
         where_parts.push(format!("position = ${}", next_param));
         next_param += 1;
     }
 
-    
     if !where_parts.is_empty() {
         let where_clause = format!(" WHERE {}", where_parts.join(" AND "));
         query_str.push_str(&where_clause);
         count_str.push_str(&where_clause);
     }
 
-    
-    query_str.push_str(&format!(" ORDER BY inserted_at DESC LIMIT ${} OFFSET ${}", next_param, next_param + 1));
+    query_str.push_str(&format!(
+        " ORDER BY inserted_at DESC LIMIT ${} OFFSET ${}",
+        next_param,
+        next_param + 1
+    ));
 
-    
     let mut main_query = sqlx::query_as::<_, crate::models::Bet>(&query_str);
     if let Some(ref addr) = filters.user_address {
         main_query = main_query.bind(addr);
@@ -419,7 +417,6 @@ pub(super) async fn get_bets_with_filters(
         if let Ok(market_num) = market.parse::<i64>() {
             main_query = main_query.bind(market_num);
         } else {
-            
             return Ok(Json(json!({
                 "data": Vec::<crate::models::Bet>::new(),
                 "meta": {
@@ -438,7 +435,6 @@ pub(super) async fn get_bets_with_filters(
 
     let bets = main_query.fetch_all(_db.pool()).await?;
 
-    
     let mut count_query = sqlx::query_scalar::<_, i64>(&count_str);
     if let Some(ref addr) = filters.user_address {
         count_query = count_query.bind(addr);
@@ -502,11 +498,9 @@ pub(super) async fn place_bet(
 ) -> Result<Json<Value>, AppError> {
     info!("Placing bet on market: {}", payload.market_identifier);
 
-    
     let betting_service = crate::services::betting_service::BettingService::new(db.pool().clone())
         .map_err(|e| AppError::Internal(format!("Failed to initialize betting service: {}", e)))?;
 
-    
     let params = crate::services::betting_service::PlaceBetParams {
         market_identifier: payload.market_identifier,
         user_address: payload.user_address,
@@ -514,8 +508,9 @@ pub(super) async fn place_bet(
         amount: payload.amount,
     };
 
-    
-    let result = betting_service.place_bet(params).await
+    let result = betting_service
+        .place_bet(params)
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to place bet: {}", e)))?;
 
     Ok(Json(json!({
@@ -547,21 +542,23 @@ pub(super) async fn claim_winnings_route(
     State(db): State<Database>,
     Json(payload): Json<ClaimWinningsRequest>,
 ) -> Result<Json<Value>, AppError> {
-    info!("Claiming winnings for market: {}", payload.market_identifier);
+    info!(
+        "Claiming winnings for market: {}",
+        payload.market_identifier
+    );
 
-    
     let betting_service = crate::services::betting_service::BettingService::new(db.pool().clone())
         .map_err(|e| AppError::Internal(format!("Failed to initialize betting service: {}", e)))?;
 
-    
     let params = crate::services::betting_service::ClaimWinningsParams {
         market_identifier: payload.market_identifier,
         user_address: payload.user_address,
         bet_index: payload.bet_index,
     };
 
-    
-    let result = betting_service.claim_winnings(params).await
+    let result = betting_service
+        .claim_winnings(params)
+        .await
         .map_err(|e| AppError::Internal(format!("Failed to claim winnings: {}", e)))?;
 
     Ok(Json(json!({
@@ -583,15 +580,14 @@ pub(super) async fn claim_winnings_route(
 #[derive(Debug, Deserialize)]
 pub(super) struct WebhookSyncRequest {
     #[serde(rename = "syncType")]
-    sync_type: Option<String>,  
+    sync_type: Option<String>,
     #[serde(rename = "marketId")]
-    #[allow(dead_code)]  
+    #[allow(dead_code)]
     market_id: Option<i64>,
     #[serde(rename = "userId")]
-    #[allow(dead_code)]  
+    #[allow(dead_code)]
     user_id: Option<String>,
 }
-
 
 pub(super) async fn webhook_sync_data(
     State(db): State<Database>,
@@ -599,20 +595,23 @@ pub(super) async fn webhook_sync_data(
 ) -> Result<Json<Value>, AppError> {
     info!("Webhook triggered for data sync: {:?}", payload);
 
-    let sync_service = crate::services::blockchain_sync::BlockchainSyncService::new(db.pool().clone());
-    
+    let sync_service =
+        crate::services::blockchain_sync::BlockchainSyncService::new(db.pool().clone());
+
     let sync_type = payload.sync_type.as_deref().unwrap_or("full");
-    
+
     match sync_type {
         "bet" => {
-            
-            let result = sync_service.sync_bets().await
+            let result = sync_service
+                .sync_bets()
+                .await
                 .map_err(|e| AppError::Internal(format!("Bet sync failed: {}", e)))?;
-            
-            
-            sync_service.update_market_stats().await
+
+            sync_service
+                .update_market_stats()
+                .await
                 .map_err(|e| AppError::Internal(format!("Stats update failed: {}", e)))?;
-                
+
             Ok(Json(json!({
                 "success": true,
                 "message": "Bet data synchronized successfully",
@@ -623,12 +622,13 @@ pub(super) async fn webhook_sync_data(
                     "errors": result.errors
                 }
             })))
-        },
+        }
         "market" => {
-            
-            let result = sync_service.sync_markets().await
+            let result = sync_service
+                .sync_markets()
+                .await
                 .map_err(|e| AppError::Internal(format!("Market sync failed: {}", e)))?;
-            
+
             Ok(Json(json!({
                 "success": true,
                 "message": "Market data synchronized successfully",
@@ -639,12 +639,13 @@ pub(super) async fn webhook_sync_data(
                     "errors": result.errors
                 }
             })))
-        },
+        }
         _ => {
-            
-            let result = sync_service.run_full_sync().await
+            let result = sync_service
+                .run_full_sync()
+                .await
                 .map_err(|e| AppError::Internal(format!("Full sync failed: {}", e)))?;
-            
+
             Ok(Json(json!({
                 "success": true,
                 "message": "Full data synchronization completed",
@@ -665,13 +666,12 @@ pub(super) async fn get_bet_stats_summary(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Value>, AppError> {
     let user_address = params.get("userAddress");
-    
+
     info!("Fetching bet stats summary for user: {:?}", user_address);
 
     if let Some(address) = user_address {
-        
         let total_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1"#
+            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -679,7 +679,7 @@ pub(super) async fn get_bet_stats_summary(
         .unwrap_or(0);
 
         let active_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'active'"#
+            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'active'"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -687,7 +687,7 @@ pub(super) async fn get_bet_stats_summary(
         .unwrap_or(0);
 
         let won_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'won'"#
+            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'won'"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -695,7 +695,7 @@ pub(super) async fn get_bet_stats_summary(
         .unwrap_or(0);
 
         let lost_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'lost'"#
+            r#"SELECT COUNT(*) FROM bets_extended WHERE "userId" = $1 AND status = 'lost'"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -703,7 +703,7 @@ pub(super) async fn get_bet_stats_summary(
         .unwrap_or(0);
 
         let total_amount = sqlx::query_scalar::<_, Option<sqlx::types::BigDecimal>>(
-            r#"SELECT SUM(amount) FROM bets_extended WHERE "userId" = $1"#
+            r#"SELECT SUM(amount) FROM bets_extended WHERE "userId" = $1"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -712,7 +712,7 @@ pub(super) async fn get_bet_stats_summary(
         .unwrap_or_else(|| sqlx::types::BigDecimal::from(0));
 
         let total_payout = sqlx::query_scalar::<_, Option<sqlx::types::BigDecimal>>(
-            r#"SELECT SUM(payout) FROM bets_extended WHERE "userId" = $1 AND status = 'won'"#
+            r#"SELECT SUM(payout) FROM bets_extended WHERE "userId" = $1 AND status = 'won'"#,
         )
         .bind(address)
         .fetch_one(_db.pool())
@@ -741,16 +741,13 @@ pub(super) async fn get_bet_stats_summary(
             }
         })))
     } else {
-        
-        let total_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended"#
-        )
-        .fetch_one(_db.pool())
-        .await
-        .unwrap_or(0);
+        let total_bets = sqlx::query_scalar::<_, i64>(r#"SELECT COUNT(*) FROM bets_extended"#)
+            .fetch_one(_db.pool())
+            .await
+            .unwrap_or(0);
 
         let active_bets = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COUNT(*) FROM bets_extended WHERE status = 'active'"#
+            r#"SELECT COUNT(*) FROM bets_extended WHERE status = 'active'"#,
         )
         .fetch_one(_db.pool())
         .await
@@ -770,6 +767,3 @@ pub(super) async fn get_bet_stats_summary(
         })))
     }
 }
-
-
-

@@ -1,15 +1,14 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgListener, PgPool};
-use tracing::{error, info, warn};
 use std::time::Instant;
+use tracing::{error, info, warn};
 
 use super::blockchain_sync::BlockchainSyncService;
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
-#[allow(dead_code)]  
+#[allow(dead_code)]
 pub enum DatabaseEvent {
     NewBet(BetEventData),
     NewMarket(MarketEventData),
@@ -23,7 +22,7 @@ pub enum DatabaseEvent {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BetEventData {
     #[serde(default)]
-    pub operation: Option<String>,  
+    pub operation: Option<String>,
     pub bet_id: i64,
     pub market_id: i64,
     pub user_addr: String,
@@ -37,7 +36,7 @@ pub struct BetEventData {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MarketEventData {
     #[serde(default)]
-    pub operation: Option<String>,  
+    pub operation: Option<String>,
     pub market_id: i64,
     pub question: String,
     pub end_time: i64,
@@ -91,8 +90,6 @@ pub struct GenericEventData {
     pub created_at: Option<String>,
 }
 
-
-
 pub struct DbEventListener {
     pool: PgPool,
     blockchain_sync: BlockchainSyncService,
@@ -107,25 +104,19 @@ impl DbEventListener {
         }
     }
 
-    
     pub async fn start_listening(self) -> Result<()> {
         info!("🎧 Starting database event listener...");
 
-        let database_url = std::env::var("DATABASE_URL")
-            .expect("DATABASE_URL must be set");
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
         let mut listener = PgListener::connect(&database_url).await?;
 
-        
-        
         listener.listen("bet_event").await?;
         listener.listen("market_event").await?;
-        
-        
+
         listener.listen("new_bet_event").await?;
         listener.listen("new_market_event").await?;
-        
-        
+
         listener.listen("market_resolution_event").await?;
         listener.listen("winnings_claim_event").await?;
         listener.listen("yield_deposit_event").await?;
@@ -134,7 +125,9 @@ impl DbEventListener {
 
         info!("✅ Database event listener started and subscribed to all channels");
         info!("👂 Listening for INSERTUPDATE events on: bets, markets, resolutions, claims, yields, fees");
-        info!("⚡ Real-time updates will be processed immediately when indexer adds OR modifies data");
+        info!(
+            "⚡ Real-time updates will be processed immediately when indexer adds OR modifies data"
+        );
 
         loop {
             match listener.recv().await {
@@ -149,30 +142,28 @@ impl DbEventListener {
                         Ok(_) => {
                             let duration = start.elapsed().as_millis() as i32;
                             info!("✅ Event processed successfully in {}ms", duration);
-                            
-                            
-                            if let Err(e) = self.log_event_processing(
-                                channel,
-                                payload,
-                                "success",
-                                None,
-                                duration
-                            ).await {
+
+                            if let Err(e) = self
+                                .log_event_processing(channel, payload, "success", None, duration)
+                                .await
+                            {
                                 warn!("Failed to log event processing: {}", e);
                             }
                         }
                         Err(e) => {
                             let duration = start.elapsed().as_millis() as i32;
                             error!("❌ Failed to process event: {}", e);
-                            
-                            
-                            if let Err(log_err) = self.log_event_processing(
-                                channel,
-                                payload,
-                                "error",
-                                Some(&e.to_string()),
-                                duration
-                            ).await {
+
+                            if let Err(log_err) = self
+                                .log_event_processing(
+                                    channel,
+                                    payload,
+                                    "error",
+                                    Some(&e.to_string()),
+                                    duration,
+                                )
+                                .await
+                            {
                                 warn!("Failed to log event error: {}", log_err);
                             }
                         }
@@ -186,30 +177,31 @@ impl DbEventListener {
         }
     }
 
-    
     async fn process_notification(&self, channel: &str, payload: &str) -> Result<()> {
         match channel {
             "bet_event" => {
-                
                 let event_data: BetEventData = serde_json::from_str(payload)?;
                 let operation = event_data.operation.as_deref().unwrap_or("UNKNOWN");
-                info!("📌 Bet event detected: {} on bet_id={}", operation, event_data.bet_id);
+                info!(
+                    "📌 Bet event detected: {} on bet_id={}",
+                    operation, event_data.bet_id
+                );
                 self.handle_bet_event(event_data).await?;
             }
             "market_event" => {
-                
                 let event_data: MarketEventData = serde_json::from_str(payload)?;
                 let operation = event_data.operation.as_deref().unwrap_or("UNKNOWN");
-                info!("📌 Market event detected: {} on market_id={}", operation, event_data.market_id);
+                info!(
+                    "📌 Market event detected: {} on market_id={}",
+                    operation, event_data.market_id
+                );
                 self.handle_market_event(event_data).await?;
             }
             "new_bet_event" => {
-                
                 let event_data: BetEventData = serde_json::from_str(payload)?;
                 self.handle_bet_event(event_data).await?;
             }
             "new_market_event" => {
-                
                 let event_data: MarketEventData = serde_json::from_str(payload)?;
                 self.handle_market_event(event_data).await?;
             }
@@ -241,48 +233,50 @@ impl DbEventListener {
         Ok(())
     }
 
-    
     async fn handle_bet_event(&self, event: BetEventData) -> Result<()> {
         let operation = event.operation.as_deref().unwrap_or("INSERT");
-        info!("🎲 Processing {} bet: bet_id={}, market_id={}, amount={}", 
-              operation, event.bet_id, event.market_id, event.amount);
+        info!(
+            "🎲 Processing {} bet: bet_id={}, market_id={}, amount={}",
+            operation, event.bet_id, event.market_id, event.amount
+        );
 
-        
         self.blockchain_sync.sync_bets().await?;
 
-        
         let market_id_str = event.market_id.to_string();
-        self.blockchain_sync.update_market_stats_for_market(&market_id_str).await?;
+        self.blockchain_sync
+            .update_market_stats_for_market(&market_id_str)
+            .await?;
 
         info!("✅ Bet event processed and market stats updated");
         Ok(())
     }
 
-    
     async fn handle_market_event(&self, event: MarketEventData) -> Result<()> {
         let operation = event.operation.as_deref().unwrap_or("INSERT");
-        info!("🏪 Processing {} market: market_id={}, question={}", 
-              operation, event.market_id, event.question);
+        info!(
+            "🏪 Processing {} market: market_id={}, question={}",
+            operation, event.market_id, event.question
+        );
 
-        
         self.blockchain_sync.sync_markets().await?;
 
-        
         if operation == "UPDATE" && event.resolved.unwrap_or(false) {
-            info!("🎯 Market resolution detected for market_id={}", event.market_id);
-            
+            info!(
+                "🎯 Market resolution detected for market_id={}",
+                event.market_id
+            );
         }
 
         info!("✅ Market event processed");
         Ok(())
     }
 
-    
     async fn handle_market_resolution(&self, event: MarketResolutionEventData) -> Result<()> {
-        info!("🎯 Processing market resolution: market_id={}, outcome={}", 
-              event.market_id, event.outcome);
+        info!(
+            "🎯 Processing market resolution: market_id={}, outcome={}",
+            event.market_id, event.outcome
+        );
 
-        
         sqlx::query!(
             r#"
             UPDATE markets_extended
@@ -298,7 +292,6 @@ impl DbEventListener {
         .execute(&self.pool)
         .await?;
 
-        
         sqlx::query!(
             r#"
             UPDATE bets_extended
@@ -315,7 +308,6 @@ impl DbEventListener {
         .execute(&self.pool)
         .await?;
 
-        
         sqlx::query!(
             r#"
             UPDATE bets_extended
@@ -336,10 +328,11 @@ impl DbEventListener {
         Ok(())
     }
 
-    
     async fn handle_winnings_claim(&self, event: WinningsClaimEventData) -> Result<()> {
-        info!("💰 Processing winnings claim: bet_id={}, user={}, amount={}", 
-              event.bet_id, event.user_addr, event.winning_amount);
+        info!(
+            "💰 Processing winnings claim: bet_id={}, user={}, amount={}",
+            event.bet_id, event.user_addr, event.winning_amount
+        );
 
         let total_payout = event.winning_amount + event.yield_share;
         let total_payout_decimal = sqlx::types::BigDecimal::from(total_payout);
@@ -362,14 +355,14 @@ impl DbEventListener {
         Ok(())
     }
 
-    
     async fn handle_yield_deposit(&self, event: YieldDepositEventData) -> Result<()> {
-        info!("📈 Processing yield deposit: market_id={}, amount={}", 
-              event.market_id, event.amount);
+        info!(
+            "📈 Processing yield deposit: market_id={}, amount={}",
+            event.market_id, event.amount
+        );
 
-        
         let amount_decimal = sqlx::types::BigDecimal::from(event.amount);
-        
+
         sqlx::query!(
             r#"
             UPDATE markets_extended
@@ -387,28 +380,23 @@ impl DbEventListener {
         Ok(())
     }
 
-    
     async fn handle_protocol_fee(&self, event: ProtocolFeeEventData) -> Result<()> {
-        info!("💵 Processing protocol fee: market_id={}, amount={}", 
-              event.market_id, event.fee_amount);
+        info!(
+            "💵 Processing protocol fee: market_id={}, amount={}",
+            event.market_id, event.fee_amount
+        );
 
-        
         info!("✅ Protocol fee processed");
         Ok(())
     }
 
-    
     async fn handle_blockchain_event(&self, event: GenericEventData) -> Result<()> {
         info!("⛓️  Processing blockchain event: type={}", event.event_type);
-
-        
-        
 
         info!("✅ Blockchain event processed");
         Ok(())
     }
 
-    
     async fn log_event_processing(
         &self,
         event_type: &str,
@@ -420,12 +408,13 @@ impl DbEventListener {
         let event_data_json: serde_json::Value = serde_json::from_str(event_data)
             .unwrap_or_else(|_| serde_json::json!({"raw": event_data}));
 
-        let transaction_version: Option<i64> = event_data_json.get("transaction_version")
+        let transaction_version: Option<i64> = event_data_json
+            .get("transaction_version")
             .and_then(|v| v.as_i64());
 
         sqlx::query!(
             r#"
-            INSERT INTO event_processing_log 
+            INSERT INTO event_processing_log
                 (event_type, event_data, transaction_version, processing_status, error_message, processing_duration_ms)
             VALUES ($1, $2, $3, $4, $5, $6)
             "#,
@@ -442,12 +431,11 @@ impl DbEventListener {
         Ok(())
     }
 
-    
     pub async fn get_event_stats(&self) -> Result<Vec<EventStats>> {
         let stats = sqlx::query_as!(
             EventStats,
             r#"
-            SELECT 
+            SELECT
                 event_type,
                 total_processed,
                 successful,

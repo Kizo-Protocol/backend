@@ -4,11 +4,11 @@ use std::net::SocketAddr;
 use tokio::signal;
 use tower::ServiceBuilder;
 use tower_http::{
+    compression::CompressionLayer,
     cors::{Any, CorsLayer},
     trace::TraceLayer,
-    compression::CompressionLayer,
 };
-use tracing::{info, error};
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
@@ -35,7 +35,6 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
@@ -46,17 +45,14 @@ async fn main() -> Result<()> {
 
     info!("Starting Kizo Prediction Market API Server (Rust)");
 
-    
     let config = Config::from_env()?;
     info!("Configuration loaded successfully");
     info!("Server will listen on {}:{}", config.host, config.port);
 
-    
     info!("Connecting to database...");
     let db = Database::new(&config.database_url).await?;
     info!("Database connection established");
 
-    
     if db.health_check().await.is_ok() {
         info!("Database health check passed");
     } else {
@@ -64,24 +60,20 @@ async fn main() -> Result<()> {
         return Err(anyhow::anyhow!("Database health check failed"));
     }
 
-    
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
 
-    
     if std::env::var("RUN_SEEDS").unwrap_or_default() == "true" {
         info!("Running database seeds...");
         seed::run_all_seeds(db.pool()).await?;
-        
-        
+
         let yield_service = services::yield_service::YieldService::new(db.pool().clone());
         yield_service.initialize_protocols().await?;
         info!("Seeds and protocols initialized");
     }
-    
-    
+
     info!("🔄 Running initial full synchronization from indexer database...");
     let initial_sync = services::blockchain_sync::BlockchainSyncService::new(db.pool().clone());
     match initial_sync.run_full_sync().await {
@@ -91,7 +83,10 @@ async fn main() -> Result<()> {
                 summary.total_processed, summary.total_errors, summary.duration_ms
             );
             if summary.total_processed > 0 {
-                info!("📊 Synced {} total events from indexer", summary.total_processed);
+                info!(
+                    "📊 Synced {} total events from indexer",
+                    summary.total_processed
+                );
                 for result in &summary.results {
                     if result.new_events > 0 {
                         info!("  - {}: {} new items", result.event_type, result.new_events);
@@ -106,16 +101,13 @@ async fn main() -> Result<()> {
         }
     }
 
-    
     info!("🚀 Starting background scheduler and event listener...");
     let scheduler = Arc::new(services::scheduler::Scheduler::new(db.pool().clone()));
     scheduler.start().await;
 
-    
     let app = Router::new()
         .merge(
-            SwaggerUi::new("/api-docs")
-                .url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
+            SwaggerUi::new("/api-docs").url("/api-docs/openapi.json", openapi::ApiDoc::openapi()),
         )
         .nest("/api", routes::create_router(db.clone()))
         .merge(admin::routes::create_admin_router(db))
@@ -127,17 +119,24 @@ async fn main() -> Result<()> {
         )
         .into_make_service();
 
-    
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     info!("Server listening on {}", addr);
 
-    
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
     info!("🚀 Kizo Prediction Market API Server started successfully");
-    info!("📚 API Documentation: http://{}:{}/api-docs", config.host, config.port);
-    info!("📖 OpenAPI Spec: http://{}:{}/api-docs/openapi.json", config.host, config.port);
-    info!("💚 Health Check: http://{}:{}/api/health", config.host, config.port);
+    info!(
+        "📚 API Documentation: http://{}:{}/api-docs",
+        config.host, config.port
+    );
+    info!(
+        "📖 OpenAPI Spec: http://{}:{}/api-docs/openapi.json",
+        config.host, config.port
+    );
+    info!(
+        "💚 Health Check: http://{}:{}/api/health",
+        config.host, config.port
+    );
     info!("");
     info!("Available endpoints:");
     info!("  - GET  /api/markets              - List all markets");
@@ -151,7 +150,6 @@ async fn main() -> Result<()> {
     info!("  - GET  /api/bets/market/:id      - Get market bets");
     info!("  - GET  /api/sync/status          - Get sync status");
 
-    
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;

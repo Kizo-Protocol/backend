@@ -52,7 +52,7 @@ impl UserYieldCalculator {
 
         // Fetch active protocols
         let protocols = self.fetch_active_protocols().await?;
-        
+
         if protocols.is_empty() {
             debug!("No active protocols found, returning zero yields");
             return Ok(UserYieldSummary {
@@ -75,12 +75,15 @@ impl UserYieldCalculator {
             .unwrap();
 
         let best_apy = f64::from_str(&best_protocol.base_apy).unwrap_or(0.0);
-        
-        debug!("Using protocol '{}' with APY: {}", best_protocol.name, best_apy);
+
+        debug!(
+            "Using protocol '{}' with APY: {}",
+            best_protocol.name, best_apy
+        );
 
         // Fetch active bets for the user
         let active_bets = self.fetch_user_active_bets(user_address).await?;
-        
+
         if active_bets.is_empty() {
             debug!("No active bets found for user");
             return Ok(self.create_empty_summary_with_protocols(&protocols));
@@ -99,7 +102,7 @@ impl UserYieldCalculator {
             // Calculate time elapsed in days
             let elapsed_days = (now - bet.created_at).num_days() as f64;
             let elapsed_hours = (now - bet.created_at).num_hours() as f64;
-            
+
             // Use hours for more granular calculation if less than a day
             let time_factor = if elapsed_days < 1.0 {
                 elapsed_hours / 24.0
@@ -121,7 +124,7 @@ impl UserYieldCalculator {
         let mut protocol_breakdown = Vec::new();
         for protocol in &protocols {
             let protocol_apy = f64::from_str(&protocol.base_apy).unwrap_or(0.0);
-            
+
             // For simplicity, assign all user's bets to the best protocol
             // In a real scenario, you'd track which protocol each bet uses
             if protocol.name == best_protocol.name {
@@ -160,7 +163,7 @@ impl UserYieldCalculator {
         info!("Calculating global yields for all users");
 
         let protocols = self.fetch_active_protocols().await?;
-        
+
         if protocols.is_empty() {
             return Ok(UserYieldSummary {
                 total_yield_earned: 0.0,
@@ -184,7 +187,7 @@ impl UserYieldCalculator {
 
         // Fetch all active bets
         let active_bets = self.fetch_all_active_bets().await?;
-        
+
         if active_bets.is_empty() {
             return Ok(self.create_empty_summary_with_protocols(&protocols));
         }
@@ -201,7 +204,7 @@ impl UserYieldCalculator {
 
             let elapsed_days = (now - bet.created_at).num_days() as f64;
             let elapsed_hours = (now - bet.created_at).num_hours() as f64;
-            
+
             let time_factor = if elapsed_days < 1.0 {
                 elapsed_hours / 24.0
             } else {
@@ -216,7 +219,7 @@ impl UserYieldCalculator {
         let mut protocol_breakdown = Vec::new();
         for protocol in &protocols {
             let protocol_apy = f64::from_str(&protocol.base_apy).unwrap_or(0.0);
-            
+
             if protocol.name == best_protocol.name {
                 protocol_breakdown.push(ProtocolYieldBreakdown {
                     protocol: protocol.name.clone(),
@@ -269,7 +272,7 @@ impl UserYieldCalculator {
     async fn fetch_user_active_bets(&self, user_address: &str) -> Result<Vec<ActiveBet>> {
         let rows = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 b.amount,
                 b.inserted_at
             FROM bets b
@@ -297,7 +300,7 @@ impl UserYieldCalculator {
     async fn fetch_all_active_bets(&self) -> Result<Vec<ActiveBet>> {
         let rows = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 b.amount,
                 b.inserted_at
             FROM bets b

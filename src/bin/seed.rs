@@ -1,5 +1,5 @@
 use anyhow::Result;
-use tracing::{info, error};
+use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use kizo_server::{config::Config, db::Database, seed};

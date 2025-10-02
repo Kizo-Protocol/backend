@@ -8,12 +8,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use utoipa;
 
-use crate::{
-    chart::ChartService,
-    db::Database,
-    error::AppError,
-    models::ChartQueryParams,
-};
+use crate::{chart::ChartService, db::Database, error::AppError, models::ChartQueryParams};
 pub fn create_charts_router() -> Router<Database> {
     Router::new()
         .route("/market/:id", get(get_market_chart))
@@ -45,11 +40,9 @@ async fn get_market_chart(
     Path(id): Path<String>,
     Query(params): Query<ChartQueryParams>,
 ) -> Result<Json<Value>, AppError> {
-    
     let market_id: i64 = if let Ok(num_id) = id.parse::<i64>() {
         num_id
     } else {
-        
         let result = sqlx::query!(
             r#"SELECT "blockchainMarketId" as blockchain_market_id FROM markets_extended WHERE id = $1 LIMIT 1"#,
             id
@@ -57,19 +50,24 @@ async fn get_market_chart(
         .fetch_optional(db.pool())
         .await?
         .ok_or_else(|| AppError::NotFound("Market not found".to_string()))?;
-        
-        result.blockchain_market_id.ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
+
+        result
+            .blockchain_market_id
+            .ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
     };
 
-    
     if let Some(from) = params.from {
         if from < 0 {
-            return Err(AppError::BadRequest("'from' must be a positive number".to_string()));
+            return Err(AppError::BadRequest(
+                "'from' must be a positive number".to_string(),
+            ));
         }
     }
     if let Some(to) = params.to {
         if to < 0 {
-            return Err(AppError::BadRequest("'to' must be a positive number".to_string()));
+            return Err(AppError::BadRequest(
+                "'to' must be a positive number".to_string(),
+            ));
         }
     }
 
@@ -147,7 +145,6 @@ async fn get_market_probability(
     Path(id): Path<String>,
     Query(params): Query<ChartQueryParams>,
 ) -> Result<Json<Value>, AppError> {
-    
     let market_id: i64 = if let Ok(num_id) = id.parse::<i64>() {
         num_id
     } else {
@@ -158,8 +155,10 @@ async fn get_market_probability(
         .fetch_optional(db.pool())
         .await?
         .ok_or_else(|| AppError::NotFound("Market not found".to_string()))?;
-        
-        result.blockchain_market_id.ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
+
+        result
+            .blockchain_market_id
+            .ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
     };
 
     let chart_service = ChartService::new(db.pool().clone());
@@ -202,7 +201,6 @@ async fn get_market_volume(
     Path(id): Path<String>,
     Query(params): Query<ChartQueryParams>,
 ) -> Result<Json<Value>, AppError> {
-    
     let market_id: i64 = if let Ok(num_id) = id.parse::<i64>() {
         num_id
     } else {
@@ -213,8 +211,10 @@ async fn get_market_volume(
         .fetch_optional(db.pool())
         .await?
         .ok_or_else(|| AppError::NotFound("Market not found".to_string()))?;
-        
-        result.blockchain_market_id.ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
+
+        result
+            .blockchain_market_id
+            .ok_or_else(|| AppError::BadRequest("Market has no blockchain ID".to_string()))?
     };
 
     let chart_service = ChartService::new(db.pool().clone());
@@ -243,7 +243,6 @@ async fn get_mock_chart_data(
 ) -> Result<Json<Value>, AppError> {
     info!("Generating mock chart data for market {}", id);
 
-    
     let interval_seconds = match params.interval.as_str() {
         "1m" => 60,
         "5m" => 300,
@@ -260,11 +259,10 @@ async fn get_mock_chart_data(
     };
 
     let to_timestamp = params.to.unwrap_or_else(|| chrono::Utc::now().timestamp());
-    let from_timestamp = params.from.unwrap_or_else(|| to_timestamp - 86400 * 7); 
+    let from_timestamp = params.from.unwrap_or_else(|| to_timestamp - 86400 * 7);
 
     let requested_series: Vec<&str> = params.series.split(',').map(|s| s.trim()).collect();
 
-    
     let mut probability_yes = Vec::new();
     let mut probability_no = Vec::new();
     let mut volume_yes = Vec::new();
@@ -278,7 +276,6 @@ async fn get_mock_chart_data(
     let mut yes_prob: f64 = 0.5;
 
     while current_time <= to_timestamp {
-        
         yes_prob += (rand::random::<f64>() - 0.5) * 0.05;
         yes_prob = yes_prob.clamp(0.1, 0.9);
         let no_prob = 1.0 - yes_prob;
@@ -292,7 +289,6 @@ async fn get_mock_chart_data(
             "value": no_prob
         }));
 
-        
         let yes_vol = (rand::random::<f64>() * 1000.0) as i64;
         let no_vol = (rand::random::<f64>() * 1000.0) as i64;
         volume_yes.push(json!({
@@ -308,7 +304,6 @@ async fn get_mock_chart_data(
             "value": yes_vol + no_vol
         }));
 
-        
         let yes_odd = if yes_prob > 0.0 { 1.0 / yes_prob } else { 2.0 };
         let no_odd = if no_prob > 0.0 { 1.0 / no_prob } else { 2.0 };
         odds_yes.push(json!({
@@ -320,7 +315,6 @@ async fn get_mock_chart_data(
             "value": no_odd
         }));
 
-        
         bet_count.push(json!({
             "time": current_time,
             "value": (rand::random::<f64>() * 50.0) as i64
@@ -428,6 +422,3 @@ async fn get_chart_config() -> Json<Value> {
         "max_data_points": 1000
     }))
 }
-
-
-

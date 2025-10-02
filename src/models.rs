@@ -1,9 +1,8 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize, Serializer};
-use sqlx::FromRow;
 use sqlx::types::BigDecimal;
+use sqlx::FromRow;
 use utoipa::ToSchema;
-
 
 fn serialize_naive_datetime<S>(date: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -12,8 +11,6 @@ where
     let s = date.format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
     serializer.serialize_str(&s)
 }
-
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -111,8 +108,6 @@ pub struct CreateUserRequest {
     pub username: Option<String>,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Market {
     pub market_id: i64,
@@ -127,7 +122,6 @@ pub struct Market {
     pub total_yield_earned: Option<i64>,
     pub resolution_transaction_version: Option<i64>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct MarketExtended {
@@ -175,7 +169,6 @@ pub struct MarketExtended {
     pub updated_at: NaiveDateTime,
 }
 
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]
@@ -206,7 +199,7 @@ pub struct MarketResponse {
     pub total_yield_earned: String,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub daily_yield: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -217,7 +210,7 @@ pub struct MarketResponse {
     pub best_protocol_apy: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub best_protocol_name: Option<String>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bets: Option<Vec<BetResponse>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -268,8 +261,6 @@ pub struct MarketWithStats {
     pub no_percentage: f64,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Bet {
@@ -306,8 +297,6 @@ pub struct BetWithMarket {
     pub market_question: String,
 }
 
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct MarketResolution {
@@ -318,8 +307,6 @@ pub struct MarketResolution {
     pub transaction_block_height: i64,
     pub inserted_at: NaiveDateTime,
 }
-
-
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -334,8 +321,6 @@ pub struct WinningsClaim {
     pub inserted_at: NaiveDateTime,
 }
 
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct YieldDeposit {
@@ -348,8 +333,6 @@ pub struct YieldDeposit {
     pub inserted_at: NaiveDateTime,
 }
 
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct ProtocolFee {
@@ -360,8 +343,6 @@ pub struct ProtocolFee {
     pub transaction_block_height: i64,
     pub inserted_at: NaiveDateTime,
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -402,8 +383,6 @@ pub struct UserStats {
     pub total_yield_earned: String,
 }
 
-
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
@@ -412,8 +391,6 @@ pub struct SyncStatus {
     pub event_type: String,
     pub last_sync_time: NaiveDateTime,
 }
-
-
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct PaginationParams {
@@ -466,8 +443,6 @@ pub enum SortOrder {
     Desc,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Protocol {
@@ -482,8 +457,6 @@ pub struct Protocol {
     pub updated_at: NaiveDateTime,
 }
 
-
-
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct YieldRecord {
@@ -497,8 +470,6 @@ pub struct YieldRecord {
     pub created_at: NaiveDateTime,
 }
 
-
-
 #[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
@@ -510,8 +481,6 @@ pub struct FeeRecord {
     pub source: String,
     pub created_at: NaiveDateTime,
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChartDataPoint {

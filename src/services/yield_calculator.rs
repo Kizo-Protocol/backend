@@ -19,11 +19,9 @@ pub async fn calculate_market_yield_data(
     volume: &BigDecimal,
     end_date: &NaiveDateTime,
 ) -> Result<YieldData> {
-    
     let now = chrono::Utc::now().naive_utc();
     let days_remaining = (*end_date - now).num_days().max(0);
-    
-    
+
     let best_protocol = sqlx::query!(
         r#"
         SELECT name, "baseApy" as base_apy
@@ -44,20 +42,17 @@ pub async fn calculate_market_yield_data(
         (5.0, "default".to_string())
     };
 
-    
     let pool_str = total_pool_size.to_string();
     let mut pool_amount = f64::from_str(&pool_str).unwrap_or(0.0);
-    
-    
+
     if pool_amount < 0.001 {
         let volume_str = volume.to_string();
         let volume_val = f64::from_str(&volume_str).unwrap_or(0.0);
         pool_amount = volume_val / 1_000_000.0;
     }
-    
+
     pool_amount = pool_amount.max(0.0);
-    
-    
+
     let (daily_yield, total_yield_until_end) = if pool_amount <= 0.0 || days_remaining <= 0 {
         (0.0, 0.0)
     } else {

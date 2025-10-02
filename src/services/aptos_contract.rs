@@ -31,12 +31,12 @@ impl AptosContractService {
     pub fn new() -> Result<Self> {
         let node_url = std::env::var("APTOS_NODE_URL")
             .unwrap_or_else(|_| "https://fullnode.testnet.aptoslabs.com/v1".to_string());
-        
+
         let module_address = std::env::var("APTOS_MODULE_ADDRESS")
             .map_err(|_| anyhow!("APTOS_MODULE_ADDRESS environment variable is required"))?;
-        
-        let module_name = std::env::var("APTOS_MODULE_NAME")
-            .unwrap_or_else(|_| "prediction_market".to_string());
+
+        let module_name =
+            std::env::var("APTOS_MODULE_NAME").unwrap_or_else(|_| "prediction_market".to_string());
 
         Ok(Self {
             node_url,
@@ -45,21 +45,12 @@ impl AptosContractService {
         })
     }
 
-    
     pub async fn create_market(&self, params: CreateMarketParams) -> Result<CreateMarketResult> {
-        info!(
-            "Creating market on Aptos blockchain: {}",
-            params.question
-        );
+        info!("Creating market on Aptos blockchain: {}", params.question);
 
-        
         let _private_key = std::env::var("APTOS_PRIVATE_KEY")
             .map_err(|_| anyhow!("APTOS_PRIVATE_KEY environment variable is required"))?;
 
-        
-        
-        
-        
         let function_id = format!(
             "{}::{}::create_market",
             self.module_address, self.module_name
@@ -70,29 +61,17 @@ impl AptosContractService {
             "function": function_id,
             "type_arguments": [params.token_type],
             "arguments": [
-                self.module_address,  
+                self.module_address,
                 params.question,
                 params.description,
                 params.duration_seconds.to_string(),
-                params.protocol_selector_addr  
+                params.protocol_selector_addr
             ]
         });
 
-        
-        
         info!("Transaction payload prepared: {:?}", payload);
-        info!(
-            "NOTE: Actual Aptos SDK integration required. Using mock response for development."
-        );
+        info!("NOTE: Actual Aptos SDK integration required. Using mock response for development.");
 
-        
-        
-        
-        
-        
-        
-
-        
         let mock_market_id = chrono::Utc::now().timestamp() % 1000000;
         let mock_tx_hash = format!("0x{:x}", mock_market_id);
 
@@ -108,14 +87,10 @@ impl AptosContractService {
         })
     }
 
-    
     pub async fn get_market(&self, market_id: i64) -> Result<serde_json::Value> {
         info!("Fetching market {} from Aptos blockchain", market_id);
 
-        let view_function = format!(
-            "{}::{}::get_market",
-            self.module_address, self.module_name
-        );
+        let view_function = format!("{}::{}::get_market", self.module_address, self.module_name);
 
         let url = format!("{}/view", self.node_url);
         let client = reqwest::Client::new();
@@ -131,18 +106,17 @@ impl AptosContractService {
             .await?;
 
         if !response.status().is_success() {
-            error!("Failed to fetch market from blockchain: {}", response.status());
-            return Err(anyhow!(
-                "Failed to fetch market: {}",
+            error!(
+                "Failed to fetch market from blockchain: {}",
                 response.status()
-            ));
+            );
+            return Err(anyhow!("Failed to fetch market: {}", response.status()));
         }
 
         let data: serde_json::Value = response.json().await?;
         Ok(data)
     }
 
-    
     pub async fn get_status(&self) -> Result<serde_json::Value> {
         let client = reqwest::Client::new();
         let response = client.get(&self.node_url).send().await?;
@@ -175,7 +149,6 @@ mod tests {
         let service = AptosContractService::new().unwrap();
         let result = service.get_status().await;
 
-        
         match result {
             Ok(status) => {
                 assert_eq!(status["status"], "connected");

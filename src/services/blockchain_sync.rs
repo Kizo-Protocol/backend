@@ -43,7 +43,6 @@ impl BlockchainSyncService {
 
         info!("Starting market sync from indexer tables");
 
-        
         let markets = sqlx::query!(
             r#"
             SELECT m.market_id, m.question, m.end_time, m.yield_protocol_addr,
@@ -64,7 +63,10 @@ impl BlockchainSyncService {
             result.processed += 1;
 
             let market_id_val = market.market_id;
-            match self.create_extended_market(market.market_id, market.end_time).await {
+            match self
+                .create_extended_market(market.market_id, market.end_time)
+                .await
+            {
                 Ok(_) => {
                     result.new_events += 1;
                     info!("Created extended record for market {}", market_id_val);
@@ -86,7 +88,6 @@ impl BlockchainSyncService {
     }
 
     async fn create_extended_market(&self, market_id: i64, end_time: i64) -> Result<()> {
-
         let id = Uuid::new_v4().to_string();
         let end_date = chrono::DateTime::from_timestamp(end_time, 0)
             .map(|dt| dt.naive_utc())
@@ -123,7 +124,6 @@ impl BlockchainSyncService {
 
         info!("Starting bet sync from indexer tables");
 
-        
         let bets = sqlx::query!(
             r#"
             SELECT b.bet_id, b.user_addr, b.amount
@@ -142,7 +142,6 @@ impl BlockchainSyncService {
         for bet in bets {
             result.processed += 1;
 
-            
             let user_id = match self.get_or_create_user(&bet.user_addr).await {
                 Ok(id) => id,
                 Err(e) => {
@@ -152,8 +151,10 @@ impl BlockchainSyncService {
                 }
             };
 
-            
-            match self.create_extended_bet(bet.bet_id, &user_id, bet.amount).await {
+            match self
+                .create_extended_bet(bet.bet_id, &user_id, bet.amount)
+                .await
+            {
                 Ok(_) => {
                     result.new_events += 1;
                 }
@@ -176,21 +177,16 @@ impl BlockchainSyncService {
     async fn get_or_create_user(&self, address: &str) -> Result<String> {
         let normalized_addr = address.to_lowercase();
 
-        
-        let existing = sqlx::query!(
-            "SELECT id FROM users WHERE address = $1",
-            normalized_addr
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let existing = sqlx::query!("SELECT id FROM users WHERE address = $1", normalized_addr)
+            .fetch_optional(&self.pool)
+            .await?;
 
         if let Some(user) = existing {
             return Ok(user.id);
         }
 
-        
         let id = Uuid::new_v4().to_string();
-        
+
         match sqlx::query!(
             r#"
             INSERT INTO users (id, address, "createdAt", "updatedAt")
@@ -201,38 +197,34 @@ impl BlockchainSyncService {
             normalized_addr
         )
         .execute(&self.pool)
-        .await {
+        .await
+        {
             Ok(result) => {
                 if result.rows_affected() > 0 {
                     info!("Created new user: {}", normalized_addr);
                     Ok(id)
                 } else {
-                    
-                    let user = sqlx::query!(
-                        "SELECT id FROM users WHERE address = $1",
-                        normalized_addr
-                    )
-                    .fetch_one(&self.pool)
-                    .await?;
+                    let user =
+                        sqlx::query!("SELECT id FROM users WHERE address = $1", normalized_addr)
+                            .fetch_one(&self.pool)
+                            .await?;
                     Ok(user.id)
                 }
             }
             Err(e) => {
-                
-                warn!("Failed to insert user {}: {}, attempting to fetch", normalized_addr, e);
-                let user = sqlx::query!(
-                    "SELECT id FROM users WHERE address = $1",
-                    normalized_addr
-                )
-                .fetch_one(&self.pool)
-                .await?;
+                warn!(
+                    "Failed to insert user {}: {}, attempting to fetch",
+                    normalized_addr, e
+                );
+                let user = sqlx::query!("SELECT id FROM users WHERE address = $1", normalized_addr)
+                    .fetch_one(&self.pool)
+                    .await?;
                 Ok(user.id)
             }
         }
     }
 
     async fn create_extended_bet(&self, bet_id: i64, user_id: &str, _amount: i64) -> Result<()> {
-        
         let bet = sqlx::query!(
             r#"
             SELECT bet_id, market_id, user_addr, position, amount
@@ -252,7 +244,6 @@ impl BlockchainSyncService {
             }
         };
 
-        
         let market = sqlx::query!(
             r#"SELECT id FROM markets_extended WHERE "blockchainMarketId" = $1"#,
             bet.market_id
@@ -263,13 +254,16 @@ impl BlockchainSyncService {
         let market_uuid = match market {
             Some(m) => m.id,
             None => {
-                warn!("Market {} not found for bet {}, skipping", bet.market_id, bet_id);
+                warn!(
+                    "Market {} not found for bet {}, skipping",
+                    bet.market_id, bet_id
+                );
                 return Ok(());
             }
         };
 
         let id = Uuid::new_v4().to_string();
-        let odds = sqlx::types::BigDecimal::from(1); 
+        let odds = sqlx::types::BigDecimal::from(1);
         let amount_decimal = sqlx::types::BigDecimal::from(bet.amount);
 
         sqlx::query!(
@@ -297,25 +291,24 @@ impl BlockchainSyncService {
     pub async fn update_market_stats(&self) -> Result<()> {
         info!("Updating market statistics");
 
-        
         let updated_rows = sqlx::query!(
             r#"
             UPDATE markets_extended me
-            SET 
+            SET
                 "yesPoolSize" = COALESCE(subq.yes_pool, 0),
                 "noPoolSize" = COALESCE(subq.no_pool, 0),
                 "totalPoolSize" = COALESCE(subq.total_pool, 0),
                 "countYes" = COALESCE(subq.yes_count, 0),
                 "countNo" = COALESCE(subq.no_count, 0),
                 volume = COALESCE(subq.total_pool, 0),
-                probability = CASE 
-                    WHEN COALESCE(subq.total_pool, 0) > 0 THEN 
+                probability = CASE
+                    WHEN COALESCE(subq.total_pool, 0) > 0 THEN
                         ROUND((COALESCE(subq.yes_pool, 0) / subq.total_pool * 100)::numeric)::int
                     ELSE 50
                 END,
                 "updatedAt" = CURRENT_TIMESTAMP
             FROM (
-                SELECT 
+                SELECT
                     me2."blockchainMarketId" as market_id,
                     SUM(CASE WHEN be.position = true THEN be.amount ELSE 0 END)::numeric as yes_pool,
                     SUM(CASE WHEN be.position = false THEN be.amount ELSE 0 END)::numeric as no_pool,
@@ -333,38 +326,45 @@ impl BlockchainSyncService {
         .execute(&self.pool)
         .await?;
 
-        info!("Market statistics updated for {} markets", updated_rows.rows_affected());
+        info!(
+            "Market statistics updated for {} markets",
+            updated_rows.rows_affected()
+        );
         Ok(())
     }
 
     pub async fn update_market_stats_for_market(&self, blockchain_market_id: &str) -> Result<()> {
-        info!("Updating statistics for blockchain market_id: {}", blockchain_market_id);
+        info!(
+            "Updating statistics for blockchain market_id: {}",
+            blockchain_market_id
+        );
 
-        
-        let market_id_i64: i64 = blockchain_market_id.parse()
-            .unwrap_or_else(|_| {
-                warn!("Failed to parse market_id {}, trying as UUID", blockchain_market_id);
-                -1
-            });
+        let market_id_i64: i64 = blockchain_market_id.parse().unwrap_or_else(|_| {
+            warn!(
+                "Failed to parse market_id {}, trying as UUID",
+                blockchain_market_id
+            );
+            -1
+        });
 
         let updated_rows = sqlx::query!(
             r#"
             UPDATE markets_extended me
-            SET 
+            SET
                 "yesPoolSize" = COALESCE(subq.yes_pool, 0),
                 "noPoolSize" = COALESCE(subq.no_pool, 0),
                 "totalPoolSize" = COALESCE(subq.total_pool, 0),
                 "countYes" = COALESCE(subq.yes_count, 0),
                 "countNo" = COALESCE(subq.no_count, 0),
                 volume = COALESCE(subq.total_pool, 0),
-                probability = CASE 
-                    WHEN COALESCE(subq.total_pool, 0) > 0 THEN 
+                probability = CASE
+                    WHEN COALESCE(subq.total_pool, 0) > 0 THEN
                         ROUND((COALESCE(subq.yes_pool, 0) / subq.total_pool * 100)::numeric)::int
                     ELSE 50
                 END,
                 "updatedAt" = CURRENT_TIMESTAMP
             FROM (
-                SELECT 
+                SELECT
                     me2."blockchainMarketId",
                     SUM(CASE WHEN be.position = true THEN be.amount ELSE 0 END)::numeric as yes_pool,
                     SUM(CASE WHEN be.position = false THEN be.amount ELSE 0 END)::numeric as no_pool,
@@ -383,7 +383,11 @@ impl BlockchainSyncService {
         .execute(&self.pool)
         .await?;
 
-        info!("Market {} statistics updated ({} rows affected)", blockchain_market_id, updated_rows.rows_affected());
+        info!(
+            "Market {} statistics updated ({} rows affected)",
+            blockchain_market_id,
+            updated_rows.rows_affected()
+        );
         Ok(())
     }
 
@@ -395,7 +399,6 @@ impl BlockchainSyncService {
         let mut total_processed = 0;
         let mut total_errors = 0;
 
-        
         match self.sync_markets().await {
             Ok(result) => {
                 total_processed += result.processed;
@@ -407,7 +410,6 @@ impl BlockchainSyncService {
             }
         }
 
-        
         match self.sync_bets().await {
             Ok(result) => {
                 total_processed += result.processed;
@@ -419,7 +421,6 @@ impl BlockchainSyncService {
             }
         }
 
-        
         if let Err(e) = self.update_market_stats().await {
             error!("Failed to update market stats: {}", e);
         }

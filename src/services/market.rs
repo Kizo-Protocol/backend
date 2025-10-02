@@ -13,23 +13,23 @@ impl MarketService {
         Self { pool }
     }
 
-    
+
     #[allow(dead_code)]
     pub async fn sync_market_from_indexer(&self, market_id: i64) -> Result<()> {
         info!("Syncing market {} from indexer", market_id);
-        
-        
-        
-        
+
+
+
+
         Ok(())
     }
 
-    
+
     #[allow(dead_code)]
     pub async fn get_market_statistics(&self, market_id: i64) -> Result<MarketStatistics> {
         let stats = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 COUNT(b.bet_id) as total_bets,
                 COALESCE(SUM(b.amount), 0) as total_volume,
                 COALESCE(SUM(CASE WHEN b.position = true THEN b.amount ELSE 0 END), 0) as yes_volume,
@@ -43,7 +43,7 @@ impl MarketService {
         .fetch_one(&self.pool)
         .await?;
 
-        
+
         Ok(MarketStatistics {
             market_id,
             total_bets: stats.total_bets.unwrap_or(0),

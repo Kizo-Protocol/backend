@@ -47,8 +47,7 @@ pub struct ImageService {
 
 impl ImageService {
     pub fn new() -> Result<Self> {
-        let pexels_api_key = std::env::var("PEXELS_API_KEY")
-            .unwrap_or_else(|_| String::new());
+        let pexels_api_key = std::env::var("PEXELS_API_KEY").unwrap_or_else(|_| String::new());
 
         if pexels_api_key.is_empty() {
             warn!("PEXELS_API_KEY not set, will use fallback images only");
@@ -62,8 +61,6 @@ impl ImageService {
         })
     }
 
-    
-    
     pub async fn generate_market_image_with_fallback(&self, question: &str) -> String {
         let start_time = std::time::Instant::now();
 
@@ -72,7 +69,6 @@ impl ImageService {
             &question[..question.len().min(100)]
         );
 
-        
         if !self.pexels_api_key.is_empty() {
             match self.generate_market_image(question).await {
                 Ok(Some(image_url)) => {
@@ -89,7 +85,6 @@ impl ImageService {
             }
         }
 
-        
         let fallback_image = Self::get_fallback_image(question);
         let duration = start_time.elapsed();
         info!("Fallback image selected in {:?}", duration);
@@ -97,7 +92,6 @@ impl ImageService {
         fallback_image
     }
 
-    
     async fn generate_market_image(&self, question: &str) -> Result<Option<String>> {
         let clean_query = Self::clean_question_for_search(question);
 
@@ -116,13 +110,13 @@ impl ImageService {
         if !response.status().is_success() {
             let status = response.status();
             let _body = response.text().await.unwrap_or_default();
-            
+
             if status == 429 {
                 warn!("Pexels API rate limit exceeded");
             } else if status == 403 {
                 warn!("Pexels API quota exceeded or forbidden");
             }
-            
+
             return Ok(None);
         }
 
@@ -135,29 +129,40 @@ impl ImageService {
         Ok(None)
     }
 
-    
     fn clean_question_for_search(question: &str) -> String {
         let mut clean_query = question
             .trim()
-            
             .trim_start_matches(|c: char| {
                 matches!(
                     c.to_lowercase().collect::<String>().as_str(),
-                    "will" | "who" | "what" | "when" | "where" | "why" | "how" | "is" | "are" | "does" | "do" | "did"
+                    "will"
+                        | "who"
+                        | "what"
+                        | "when"
+                        | "where"
+                        | "why"
+                        | "how"
+                        | "is"
+                        | "are"
+                        | "does"
+                        | "do"
+                        | "did"
                 )
             })
-            
             .trim_end_matches('?')
-            
             .chars()
-            .map(|c| if c.is_alphanumeric() || c.is_whitespace() { c } else { ' ' })
+            .map(|c| {
+                if c.is_alphanumeric() || c.is_whitespace() {
+                    c
+                } else {
+                    ' '
+                }
+            })
             .collect::<String>()
-            
             .split_whitespace()
             .collect::<Vec<_>>()
             .join(" ");
 
-        
         if clean_query.len() > 100 {
             clean_query = clean_query[..100].to_string();
         }
@@ -165,11 +170,9 @@ impl ImageService {
         clean_query
     }
 
-    
     pub fn get_fallback_image(question: &str) -> String {
         let lower_question = question.to_lowercase();
 
-        
         if lower_question.contains("election")
             || lower_question.contains("president")
             || lower_question.contains("vote")
@@ -179,7 +182,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/1550337/pexels-photo-1550337.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("sport")
             || lower_question.contains("game")
             || lower_question.contains("championship")
@@ -190,7 +192,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/274422/pexels-photo-274422.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("stock")
             || lower_question.contains("market")
             || lower_question.contains("price")
@@ -201,7 +202,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("weather")
             || lower_question.contains("temperature")
             || lower_question.contains("rain")
@@ -212,7 +212,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/1154510/pexels-photo-1154510.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("tech")
             || lower_question.contains("ai")
             || lower_question.contains("crypto")
@@ -223,7 +222,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("movie")
             || lower_question.contains("film")
             || lower_question.contains("actor")
@@ -233,7 +231,6 @@ impl ImageService {
             return "https://images.pexels.com/photos/7991579/pexels-photo-7991579.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         if lower_question.contains("science")
             || lower_question.contains("research")
             || lower_question.contains("study")
@@ -242,11 +239,9 @@ impl ImageService {
             return "https://images.pexels.com/photos/2280549/pexels-photo-2280549.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string();
         }
 
-        
         "https://images.pexels.com/photos/1323550/pexels-photo-1323550.jpeg?auto=compress&cs=tinysrgb&w=400&h=400&fit=crop".to_string()
     }
 
-    
     #[allow(dead_code)]
     pub async fn check_api_status(&self) -> Result<PexelsApiStatus> {
         if self.pexels_api_key.is_empty() {
@@ -312,23 +307,18 @@ mod tests {
 
     #[test]
     fn test_fallback_categories() {
-        
         let img = ImageService::get_fallback_image("Who will win the election?");
         assert!(img.contains("1550337"));
 
-        
         let img = ImageService::get_fallback_image("Will the team win the championship?");
         assert!(img.contains("274422"));
 
-        
         let img = ImageService::get_fallback_image("Will Bitcoin price increase?");
         assert!(img.contains("730547"));
 
-        
         let img = ImageService::get_fallback_image("Will AI surpass humans?");
         assert!(img.contains("1181671"));
 
-        
         let img = ImageService::get_fallback_image("Random question");
         assert!(img.contains("1323550"));
     }

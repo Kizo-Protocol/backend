@@ -15,7 +15,6 @@ pub async fn require_jwt(
 ) -> Result<Response, Response> {
     let jwt_service = JwtService::new();
 
-    
     let auth_header = headers
         .get("Authorization")
         .and_then(|h| h.to_str().ok())
@@ -30,7 +29,6 @@ pub async fn require_jwt(
                 .into_response()
         })?;
 
-    
     let token = JwtService::extract_token_from_header(auth_header).ok_or_else(|| {
         (
             StatusCode::UNAUTHORIZED,
@@ -42,7 +40,6 @@ pub async fn require_jwt(
             .into_response()
     })?;
 
-    
     let claims = jwt_service.validate_token(token).map_err(|e| {
         (
             StatusCode::UNAUTHORIZED,
@@ -54,9 +51,7 @@ pub async fn require_jwt(
             .into_response()
     })?;
 
-    
     request.extensions_mut().insert(claims);
 
     Ok(next.run(request).await)
 }
-

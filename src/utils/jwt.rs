@@ -4,10 +4,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,      
-    pub address: String,  
-    pub exp: usize,       
-    pub iat: usize,       
+    pub sub: String,
+    pub address: String,
+    pub exp: usize,
+    pub iat: usize,
 }
 
 impl Claims {
@@ -47,7 +47,7 @@ impl JwtService {
     }
 
     pub fn generate_token(&self, user_id: String, address: String) -> Result<String, String> {
-        let claims = Claims::new(user_id, address, 24 * 7); 
+        let claims = Claims::new(user_id, address, 24 * 7);
 
         encode(
             &Header::new(Algorithm::HS256),

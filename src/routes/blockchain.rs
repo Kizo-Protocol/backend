@@ -41,16 +41,10 @@ async fn create_market_on_aptos(
     State(db): State<Database>,
     Json(payload): Json<CreateAptosMarketRequest>,
 ) -> Result<Json<Value>, AppError> {
-    info!(
-        "Creating market on Aptos blockchain: {}",
-        payload.question
-    );
+    info!("Creating market on Aptos blockchain: {}", payload.question);
 
-    
     if payload.question.trim().is_empty() {
-        return Err(AppError::BadRequest(
-            "Question is required".to_string(),
-        ));
+        return Err(AppError::BadRequest("Question is required".to_string()));
     }
 
     if payload.duration < 3600 {
@@ -59,20 +53,14 @@ async fn create_market_on_aptos(
         ));
     }
 
-    
     let contract_service = AptosContractService::new().map_err(|e| {
         error!("Failed to initialize Aptos contract service: {}", e);
-        AppError::Internal(format!(
-            "Failed to initialize blockchain service: {}",
-            e
-        ))
+        AppError::Internal(format!("Failed to initialize blockchain service: {}", e))
     })?;
 
-    
     let protocol_selector_addr = std::env::var("APTOS_PROTOCOL_SELECTOR_ADDR")
         .unwrap_or_else(|_| contract_service.module_address.clone());
 
-    
     let result = contract_service
         .create_market(CreateMarketParams {
             question: payload.question.clone(),
@@ -85,10 +73,7 @@ async fn create_market_on_aptos(
         .await
         .map_err(|e| {
             error!("Failed to create market on Aptos: {}", e);
-            AppError::Internal(format!(
-                "Failed to create market on blockchain: {}",
-                e
-            ))
+            AppError::Internal(format!("Failed to create market on blockchain: {}", e))
         })?;
 
     info!(
@@ -96,11 +81,10 @@ async fn create_market_on_aptos(
         result.market_id, result.tx_hash
     );
 
-    
     if let Some(ref db_id) = payload.db_market_id {
         let update_result = sqlx::query(
-            "UPDATE markets_extended 
-             SET \"blockchainMarketId\" = $1, \"updatedAt\" = NOW() 
+            "UPDATE markets_extended
+             SET \"blockchainMarketId\" = $1, \"updatedAt\" = NOW()
              WHERE id = $2",
         )
         .bind(result.market_id)
@@ -117,7 +101,6 @@ async fn create_market_on_aptos(
             }
             Err(e) => {
                 error!("Failed to update market with blockchain ID: {}", e);
-                
             }
         }
     }
@@ -141,18 +124,12 @@ async fn create_market_on_aptos(
 async fn get_blockchain_status() -> Result<Json<Value>, AppError> {
     let contract_service = AptosContractService::new().map_err(|e| {
         error!("Failed to initialize Aptos contract service: {}", e);
-        AppError::Internal(format!(
-            "Failed to initialize blockchain service: {}",
-            e
-        ))
+        AppError::Internal(format!("Failed to initialize blockchain service: {}", e))
     })?;
 
     let status = contract_service.get_status().await.map_err(|e| {
         error!("Failed to get blockchain status: {}", e);
-        AppError::Internal(format!(
-            "Failed to connect to blockchain: {}",
-            e
-        ))
+        AppError::Internal(format!("Failed to connect to blockchain: {}", e))
     })?;
 
     Ok(Json(status))

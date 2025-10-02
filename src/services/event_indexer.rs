@@ -4,7 +4,6 @@ use sqlx::PgPool;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-
 #[derive(Debug, Deserialize, Serialize)]
 #[allow(dead_code)]
 pub struct MarketCreatedEvent {
@@ -69,7 +68,7 @@ impl EventIndexer {
     pub fn new(pool: PgPool) -> Result<Self> {
         let node_url = std::env::var("APTOS_NODE_URL")
             .unwrap_or_else(|_| "https://fullnode.testnet.aptoslabs.com/v1".to_string());
-        
+
         let module_address = std::env::var("APTOS_MODULE_ADDRESS")
             .map_err(|_| anyhow!("APTOS_MODULE_ADDRESS environment variable is required"))?;
 
@@ -81,13 +80,11 @@ impl EventIndexer {
         })
     }
 
-    
     pub async fn start_indexing(&mut self) -> Result<()> {
         info!("Starting event indexer...");
 
-        
         self.last_processed_version = self.get_last_processed_version().await?;
-        
+
         info!("Resuming from version: {}", self.last_processed_version);
 
         loop {
@@ -102,16 +99,15 @@ impl EventIndexer {
                 }
             }
 
-            
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
     }
 
-    
     async fn process_events_batch(&mut self) -> Result<usize> {
-        
-        let events = self.fetch_events_from_node(self.last_processed_version).await?;
-        
+        let events = self
+            .fetch_events_from_node(self.last_processed_version)
+            .await?;
+
         if events.is_empty() {
             return Ok(0);
         }
@@ -130,24 +126,18 @@ impl EventIndexer {
             }
         }
 
-        
         if processed_count > 0 {
-            self.update_last_processed_version(self.last_processed_version).await?;
+            self.update_last_processed_version(self.last_processed_version)
+                .await?;
         }
 
         Ok(processed_count)
     }
 
-    
     async fn fetch_events_from_node(&self, _from_version: u64) -> Result<Vec<AptosEvent>> {
-        
-        
-        
-        
         Ok(vec![])
     }
 
-    
     async fn process_single_event(&self, event: &AptosEvent) -> Result<()> {
         match event.event_type.as_str() {
             "MarketCreatedEvent" => {
@@ -176,17 +166,17 @@ impl EventIndexer {
         Ok(())
     }
 
-    
-
     async fn handle_market_created_event(&self, event: &AptosEvent) -> Result<()> {
         let data: MarketCreatedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing MarketCreatedEvent: market_id={}", data.market_id);
+
+        info!(
+            "Processing MarketCreatedEvent: market_id={}",
+            data.market_id
+        );
 
         let market_id: i64 = data.market_id.parse()?;
         let end_time = chrono::DateTime::parse_from_rfc3339(&data.end_time)?;
 
-        
         let existing = sqlx::query!(
             r#"SELECT id FROM markets_extended WHERE "blockchainMarketId" = $1"#,
             market_id
@@ -196,7 +186,7 @@ impl EventIndexer {
 
         if existing.is_some() {
             info!("Market {} already exists, updating", market_id);
-            
+
             sqlx::query!(
                 r#"
                 UPDATE markets_extended
@@ -209,13 +199,12 @@ impl EventIndexer {
             .execute(&self.pool)
             .await?;
         } else {
-            
             let id = Uuid::new_v4().to_string();
-            
+
             sqlx::query!(
                 r#"
                 INSERT INTO markets_extended (
-                    id, "blockchainMarketId", question, "endDate", 
+                    id, "blockchainMarketId", question, "endDate",
                     status, platform, "createdAt", "updatedAt"
                 )
                 VALUES ($1, $2, $3, $4, 'active', 'aptos', NOW(), NOW())
@@ -236,14 +225,16 @@ impl EventIndexer {
 
     async fn handle_bet_placed_event(&self, event: &AptosEvent) -> Result<()> {
         let data: BetPlacedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing BetPlacedEvent: bet_id={}, market_id={}", data.bet_id, data.market_id);
+
+        info!(
+            "Processing BetPlacedEvent: bet_id={}, market_id={}",
+            data.bet_id, data.market_id
+        );
 
         let bet_id_i64: i64 = data.bet_id.parse()?;
         let market_id_i64: i64 = data.market_id.parse()?;
         let amount = data.amount.parse::<sqlx::types::BigDecimal>()?;
 
-        
         let market = sqlx::query!(
             r#"SELECT id FROM markets_extended WHERE "blockchainMarketId" = $1"#,
             market_id_i64
@@ -252,7 +243,6 @@ impl EventIndexer {
         .await?
         .ok_or_else(|| anyhow!("Market not found for blockchain ID {}", market_id_i64))?;
 
-        
         let existing = sqlx::query!(
             r#"SELECT id FROM bets_extended WHERE "blockchainBetId" = $1"#,
             bet_id_i64
@@ -262,7 +252,7 @@ impl EventIndexer {
 
         if existing.is_none() {
             let bet_uuid = Uuid::new_v4().to_string();
-            
+
             sqlx::query!(
                 r#"
                 INSERT INTO bets_extended (
@@ -281,7 +271,6 @@ impl EventIndexer {
             .execute(&self.pool)
             .await?;
 
-            
             if data.position {
                 sqlx::query!(
                     r#"
@@ -322,8 +311,11 @@ impl EventIndexer {
 
     async fn handle_market_resolved_event(&self, event: &AptosEvent) -> Result<()> {
         let data: MarketResolvedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing MarketResolvedEvent: market_id={}, outcome={}", data.market_id, data.outcome);
+
+        info!(
+            "Processing MarketResolvedEvent: market_id={}, outcome={}",
+            data.market_id, data.outcome
+        );
 
         let market_id: i64 = data.market_id.parse()?;
         let yield_earned = data.total_yield_earned.parse::<sqlx::types::BigDecimal>()?;
@@ -345,7 +337,6 @@ impl EventIndexer {
         .execute(&self.pool)
         .await?;
 
-        
         sqlx::query!(
             r#"
             UPDATE bets_extended
@@ -362,15 +353,22 @@ impl EventIndexer {
         .execute(&self.pool)
         .await?;
 
-        info!("Market {} resolved with outcome: {}", market_id, if data.outcome { "YES" } else { "NO" });
+        info!(
+            "Market {} resolved with outcome: {}",
+            market_id,
+            if data.outcome { "YES" } else { "NO" }
+        );
 
         Ok(())
     }
 
     async fn handle_winnings_claimed_event(&self, event: &AptosEvent) -> Result<()> {
         let data: WinningsClaimedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing WinningsClaimedEvent: bet_id={}, user={}", data.bet_id, data.user);
+
+        info!(
+            "Processing WinningsClaimedEvent: bet_id={}, user={}",
+            data.bet_id, data.user
+        );
 
         let bet_id: i64 = data.bet_id.parse()?;
         let winning = data.winning_amount.parse::<sqlx::types::BigDecimal>()?;
@@ -398,26 +396,25 @@ impl EventIndexer {
 
     async fn handle_yield_deposited_event(&self, event: &AptosEvent) -> Result<()> {
         let data: YieldDepositedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing YieldDepositedEvent: market_id={}, amount={}", data.market_id, data.amount);
 
-        
-        
+        info!(
+            "Processing YieldDepositedEvent: market_id={}, amount={}",
+            data.market_id, data.amount
+        );
 
         Ok(())
     }
 
     async fn handle_protocol_fee_collected_event(&self, event: &AptosEvent) -> Result<()> {
         let data: ProtocolFeeCollectedEvent = serde_json::from_value(event.data.clone())?;
-        
-        info!("Processing ProtocolFeeCollectedEvent: market_id={}, fee={}", data.market_id, data.fee_amount);
 
-        
+        info!(
+            "Processing ProtocolFeeCollectedEvent: market_id={}, fee={}",
+            data.market_id, data.fee_amount
+        );
 
         Ok(())
     }
-
-    
 
     async fn get_last_processed_version(&self) -> Result<u64> {
         let result = sqlx::query!(
@@ -445,8 +442,6 @@ impl EventIndexer {
         Ok(())
     }
 }
-
-
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]

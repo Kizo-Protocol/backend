@@ -63,12 +63,11 @@ impl ChainlinkPriceFeed {
     }
 
     pub async fn get_apt_usd_price(&self) -> Result<f64> {
-        
         {
             let cache = self.cached_price.read().await;
             if let Some(price_data) = cache.as_ref() {
                 let now = chrono::Utc::now().timestamp();
-                
+
                 if now - price_data.timestamp < 300 {
                     info!("Using cached APT/USD price: ${}", price_data.price);
                     return Ok(price_data.price);
@@ -76,40 +75,41 @@ impl ChainlinkPriceFeed {
             }
         }
 
-        
         match self.fetch_price_from_chainlink().await {
             Ok(price_data) => {
                 let price = price_data.price;
-                
-                
+
                 {
                     let mut cache = self.cached_price.write().await;
                     *cache = Some(price_data);
                 }
-                
+
                 info!("Fetched fresh APT/USD price from Chainlink: ${}", price);
                 Ok(price)
             }
             Err(e) => {
                 error!("Failed to fetch price from Chainlink: {}", e);
-                
-                
+
                 let cache = self.cached_price.read().await;
                 if let Some(price_data) = cache.as_ref() {
-                    warn!("Using stale cached price as fallback: ${}", price_data.price);
+                    warn!(
+                        "Using stale cached price as fallback: ${}",
+                        price_data.price
+                    );
                     return Ok(price_data.price);
                 }
-                
-                
+
                 Err(anyhow!("Failed to fetch APT/USD price: {}", e))
             }
         }
     }
 
     async fn fetch_price_from_chainlink(&self) -> Result<PriceData> {
-        info!("🔄 Fetching APT/USD price from {} sources...", PRICE_SOURCES.len());
-        
-        
+        info!(
+            "🔄 Fetching APT/USD price from {} sources...",
+            PRICE_SOURCES.len()
+        );
+
         let mut tasks = Vec::new();
         for source in PRICE_SOURCES {
             let source_clone = source.clone();
@@ -125,10 +125,8 @@ impl ChainlinkPriceFeed {
             tasks.push(task);
         }
 
-        
         let results = futures::future::join_all(tasks).await;
-        
-        
+
         let mut prices: Vec<(String, f64)> = Vec::new();
         for result in results {
             if let Ok(Some((name, price))) = result {
@@ -138,14 +136,16 @@ impl ChainlinkPriceFeed {
         }
 
         if prices.is_empty() {
-            error!("⚠️  All {} price sources failed, using fallback", PRICE_SOURCES.len());
+            error!(
+                "⚠️  All {} price sources failed, using fallback",
+                PRICE_SOURCES.len()
+            );
             return Ok(self.get_fallback_price());
         }
 
-        
         let median_price = self.calculate_median_price(&prices);
         let source_count = prices.len();
-        
+
         info!(
             "📊 Aggregated price from {}/{} sources: ${:.4} (median)",
             source_count,
@@ -171,14 +171,11 @@ impl ChainlinkPriceFeed {
 
         let len = values.len();
         if len % 2 == 0 {
-            
             (values[len / 2 - 1] + values[len / 2]) / 2.0
         } else {
-            
             values[len / 2]
         }
     }
-
 
     fn get_fallback_price(&self) -> PriceData {
         info!("💰 Using fallback price: APT/USD = $12.00");
@@ -197,12 +194,12 @@ impl ChainlinkPriceFeed {
 
     pub async fn refresh_price(&self) -> Result<PriceData> {
         let price_data = self.fetch_price_from_chainlink().await?;
-        
+
         {
             let mut cache = self.cached_price.write().await;
             *cache = Some(price_data.clone());
         }
-        
+
         Ok(price_data)
     }
 
@@ -228,62 +225,40 @@ async fn fetch_from_source_static(source: &PriceSource) -> Result<f64> {
         .build()?;
 
     let response = client.get(source.url).send().await?;
-    
+
     if !response.status().is_success() {
         return Err(anyhow!("HTTP {}", response.status()));
     }
 
     let data: Value = response.json().await?;
 
-    
     let price = match source.name {
-        "Binance" => {
-            
-            data["price"]
-                .as_str()
-                .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "Coinbase" => {
-            
-            data["price"]
-                .as_str()
-                .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "Kraken" => {
-            
-            data["result"]["APTUSD"]["c"][0]
-                .as_str()
-                .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "Bybit" => {
-            
-            data["result"]["list"][0]["lastPrice"]
-                .as_str()
-                .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "OKX" => {
-            
-            data["data"][0]["last"]
-                .as_str()
-                .and_then(|s| s.parse::<f64>().ok())
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "CoinGecko" => {
-            
-            data["aptos"]["usd"]
-                .as_f64()
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
-        "CoinPaprika" => {
-            
-            data["quotes"]["USD"]["price"]
-                .as_f64()
-                .ok_or_else(|| anyhow!("Invalid format"))?
-        }
+        "Binance" => data["price"]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "Coinbase" => data["price"]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "Kraken" => data["result"]["APTUSD"]["c"][0]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "Bybit" => data["result"]["list"][0]["lastPrice"]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "OKX" => data["data"][0]["last"]
+            .as_str()
+            .and_then(|s| s.parse::<f64>().ok())
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "CoinGecko" => data["aptos"]["usd"]
+            .as_f64()
+            .ok_or_else(|| anyhow!("Invalid format"))?,
+        "CoinPaprika" => data["quotes"]["USD"]["price"]
+            .as_f64()
+            .ok_or_else(|| anyhow!("Invalid format"))?,
         _ => return Err(anyhow!("Unknown source")),
     };
 
@@ -315,8 +290,7 @@ mod tests {
     #[tokio::test]
     async fn test_apt_to_usd_conversion() {
         let feed = ChainlinkPriceFeed::new().unwrap();
-        
-        
+
         {
             let mut cache = feed.cached_price.write().await;
             *cache = Some(PriceData {
@@ -335,8 +309,7 @@ mod tests {
     #[tokio::test]
     async fn test_usd_to_apt_conversion() {
         let feed = ChainlinkPriceFeed::new().unwrap();
-        
-        
+
         {
             let mut cache = feed.cached_price.write().await;
             *cache = Some(PriceData {

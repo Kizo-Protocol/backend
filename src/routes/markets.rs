@@ -9,22 +9,13 @@ use serde_json::{json, Value};
 use tracing::info;
 use utoipa;
 
-use crate::{
-    db::Database,
-    error::AppError,
-    models::MarketQueryParams,
-};
+use crate::{db::Database, error::AppError, models::MarketQueryParams};
 
 use super::protocols::{
-    place_bet_alias,
-    get_blockchain_status_alias,
-    get_blockchain_market,
-    create_blockchain_market_alias,
-    update_market_image,
-    get_market_stats_by_identifier,
+    create_blockchain_market_alias, get_blockchain_market, get_blockchain_status_alias,
+    get_market_stats_by_identifier, place_bet_alias, update_market_image,
 };
 pub fn create_markets_router() -> Router<Database> {
-    
     let public_routes = Router::new()
         .route("/", get(get_markets))
         .route("/stats/platform", get(get_platform_stats))
@@ -32,14 +23,15 @@ pub fn create_markets_router() -> Router<Database> {
         .route("/blockchain/:marketId", get(get_blockchain_market))
         .route("/:identifier/stats", get(get_market_stats_by_identifier))
         .route("/:identifier", get(get_market_by_identifier));
-    
-    
+
     let protected_routes = Router::new()
         .route("/bet", post(place_bet_alias))
         .route("/create-blockchain", post(create_blockchain_market_alias))
         .route("/:identifier/image", put(update_market_image))
-        .layer(middleware::from_fn(crate::middleware::auth::require_api_key));
-    
+        .layer(middleware::from_fn(
+            crate::middleware::auth::require_api_key,
+        ));
+
     public_routes.merge(protected_routes)
 }
 
@@ -62,21 +54,21 @@ async fn get_markets(
     Query(params): Query<MarketQueryParams>,
 ) -> Result<Json<Value>, AppError> {
     info!("Fetching markets with params: {:?}", params);
-    
+
     let markets = db.get_markets(&params).await?;
     let total = db.count_markets(&params).await?;
 
-    
     let mut market_responses = Vec::new();
-    
+
     for m in markets {
-        
         let yield_data = crate::services::yield_calculator::calculate_market_yield_data(
             db.pool(),
             &m.total_pool_size,
             &m.volume,
             &m.end_date,
-        ).await.ok();
+        )
+        .await
+        .ok();
 
         let mut market_json = json!({
             "id": m.id,
@@ -109,7 +101,6 @@ async fn get_markets(
             "_count": { "bets": 0 }
         });
 
-        
         if let Some(yd) = yield_data {
             market_json["dailyYield"] = json!(yd.daily_yield);
             market_json["totalYieldUntilEnd"] = json!(yd.total_yield_until_end);
@@ -132,7 +123,6 @@ async fn get_markets(
     })))
 }
 
-
 #[utoipa::path(
     get,
     path = "/api/markets/{identifier}",
@@ -152,7 +142,6 @@ async fn get_market_by_identifier(
 ) -> Result<Json<Value>, AppError> {
     info!("Fetching market by identifier: {}", identifier);
 
-    
     let market = sqlx::query!(
         r#"
         SELECT id, "blockchainMarketId" as blockchain_market_id, "marketId" as market_id, "adjTicker" as adj_ticker,
@@ -171,13 +160,14 @@ async fn get_market_by_identifier(
     .await?
     .ok_or_else(|| AppError::NotFound("Market not found".to_string()))?;
 
-    
     let yield_data = crate::services::yield_calculator::calculate_market_yield_data(
         db.pool(),
         &market.total_pool_size,
         &market.volume,
         &market.end_date,
-    ).await.ok();
+    )
+    .await
+    .ok();
 
     let mut market_json = json!({
         "id": market.id,
@@ -210,7 +200,6 @@ async fn get_market_by_identifier(
         "_count": { "bets": 0 }
     });
 
-    
     if let Some(yd) = yield_data {
         market_json["dailyYield"] = json!(yd.daily_yield);
         market_json["totalYieldUntilEnd"] = json!(yd.total_yield_until_end);
@@ -224,14 +213,15 @@ async fn get_market_by_identifier(
     })))
 }
 
-
 #[allow(dead_code)]
 async fn get_market_by_id(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let market_id: i64 = id.parse().map_err(|_| AppError::BadRequest("Invalid market ID".to_string()))?;
-    
+    let market_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("Invalid market ID".to_string()))?;
+
     info!("Fetching market with ID: {}", market_id);
 
     let market = db
@@ -255,8 +245,10 @@ async fn get_market_stats(
     State(db): State<Database>,
     Path(id): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let market_id: i64 = id.parse().map_err(|_| AppError::BadRequest("Invalid market ID".to_string()))?;
-    
+    let market_id: i64 = id
+        .parse()
+        .map_err(|_| AppError::BadRequest("Invalid market ID".to_string()))?;
+
     info!("Fetching market stats for ID: {}", market_id);
 
     let stats = db.get_market_stats(market_id).await?;
@@ -286,6 +278,3 @@ async fn get_platform_stats(State(db): State<Database>) -> Result<Json<Value>, A
         "data": stats
     })))
 }
-
-
-

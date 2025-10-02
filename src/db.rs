@@ -12,23 +12,21 @@ pub struct Database {
 impl Database {
     pub async fn new(database_url: &str) -> Result<Self> {
         info!("Connecting to database: {}", database_url);
-        
+
         let pool = PgPoolOptions::new()
             .max_connections(10)
             .connect(database_url)
             .await
             .context("Failed to connect to database")?;
-        
+
         info!("Database connection pool established");
-        
+
         Ok(Self { pool })
     }
 
     pub fn pool(&self) -> &PgPool {
         &self.pool
     }
-
-    
 
     pub async fn get_markets(&self, params: &MarketQueryParams) -> Result<Vec<MarketExtended>> {
         let status_filter = match params.status {
@@ -63,7 +61,10 @@ impl Database {
         Ok(markets)
     }
 
-    pub async fn get_market_extended_by_id(&self, market_id: &str) -> Result<Option<MarketExtended>> {
+    pub async fn get_market_extended_by_id(
+        &self,
+        market_id: &str,
+    ) -> Result<Option<MarketExtended>> {
         let market = sqlx::query_as::<_, MarketExtended>(
             "SELECT * FROM markets_extended WHERE id = $1 OR \"marketId\" = $1 OR \"adjTicker\" = $1"
         )
@@ -75,9 +76,12 @@ impl Database {
         Ok(market)
     }
 
-    pub async fn get_market_extended_by_blockchain_id(&self, blockchain_market_id: i64) -> Result<Option<MarketExtended>> {
+    pub async fn get_market_extended_by_blockchain_id(
+        &self,
+        blockchain_market_id: i64,
+    ) -> Result<Option<MarketExtended>> {
         let market = sqlx::query_as::<_, MarketExtended>(
-            "SELECT * FROM markets_extended WHERE \"blockchainMarketId\" = $1"
+            "SELECT * FROM markets_extended WHERE \"blockchainMarketId\" = $1",
         )
         .bind(blockchain_market_id)
         .fetch_optional(&self.pool)
@@ -94,8 +98,11 @@ impl Database {
             MarketStatus::All => "",
         };
 
-        let query = format!("SELECT COUNT(*) as count FROM markets_extended{}", status_filter);
-        
+        let query = format!(
+            "SELECT COUNT(*) as count FROM markets_extended{}",
+            status_filter
+        );
+
         let row = sqlx::query(&query)
             .fetch_one(&self.pool)
             .await
@@ -106,13 +113,11 @@ impl Database {
     }
 
     pub async fn get_market_by_id(&self, market_id: i64) -> Result<Option<Market>> {
-        let market = sqlx::query_as::<_, Market>(
-            "SELECT * FROM markets WHERE market_id = $1"
-        )
-        .bind(market_id)
-        .fetch_optional(&self.pool)
-        .await
-        .context("Failed to fetch market")?;
+        let market = sqlx::query_as::<_, Market>("SELECT * FROM markets WHERE market_id = $1")
+            .bind(market_id)
+            .fetch_optional(&self.pool)
+            .await
+            .context("Failed to fetch market")?;
 
         Ok(market)
     }
@@ -120,7 +125,7 @@ impl Database {
     pub async fn get_market_stats(&self, market_id: i64) -> Result<MarketStats> {
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COALESCE(COUNT(b.bet_id), 0) as total_bets,
                 COALESCE(SUM(b.amount), 0) as total_volume,
                 COALESCE(SUM(CASE WHEN b.position = true THEN b.amount ELSE 0 END), 0) as yes_volume,
@@ -136,11 +141,14 @@ impl Database {
         .context("Failed to fetch market stats")?;
 
         let total_bets: i64 = row.try_get("total_bets")?;
-        let total_volume: sqlx::types::BigDecimal = row.try_get::<sqlx::types::BigDecimal, _>("total_volume")
+        let total_volume: sqlx::types::BigDecimal = row
+            .try_get::<sqlx::types::BigDecimal, _>("total_volume")
             .unwrap_or_else(|_| sqlx::types::BigDecimal::from(0));
-        let yes_volume: sqlx::types::BigDecimal = row.try_get::<sqlx::types::BigDecimal, _>("yes_volume")
+        let yes_volume: sqlx::types::BigDecimal = row
+            .try_get::<sqlx::types::BigDecimal, _>("yes_volume")
             .unwrap_or_else(|_| sqlx::types::BigDecimal::from(0));
-        let no_volume: sqlx::types::BigDecimal = row.try_get::<sqlx::types::BigDecimal, _>("no_volume")
+        let no_volume: sqlx::types::BigDecimal = row
+            .try_get::<sqlx::types::BigDecimal, _>("no_volume")
             .unwrap_or_else(|_| sqlx::types::BigDecimal::from(0));
         let unique_bettors: i64 = row.try_get("unique_bettors")?;
 
@@ -175,12 +183,12 @@ impl Database {
     pub async fn get_platform_stats(&self) -> Result<PlatformStats> {
         let row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*) as total_markets,
                 COUNT(*) FILTER (WHERE resolved = false OR resolved IS NULL) as active_markets,
                 COUNT(*) FILTER (WHERE resolved = true) as resolved_markets
             FROM markets
-            "#
+            "#,
         )
         .fetch_one(&self.pool)
         .await
@@ -192,30 +200,32 @@ impl Database {
 
         let bet_row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COALESCE(COUNT(*), 0) as total_bets,
                 COALESCE(SUM(amount), 0) as total_volume,
                 COALESCE(COUNT(DISTINCT user_addr), 0) as unique_users
             FROM bets
-            "#
+            "#,
         )
         .fetch_one(&self.pool)
         .await
         .context("Failed to fetch platform bet stats")?;
 
         let total_bets: i64 = bet_row.try_get("total_bets")?;
-        let total_volume: sqlx::types::BigDecimal = bet_row.try_get::<sqlx::types::BigDecimal, _>("total_volume")
+        let total_volume: sqlx::types::BigDecimal = bet_row
+            .try_get::<sqlx::types::BigDecimal, _>("total_volume")
             .unwrap_or_else(|_| sqlx::types::BigDecimal::from(0));
         let unique_users: i64 = bet_row.try_get("unique_users")?;
 
         let yield_row = sqlx::query(
-            "SELECT COALESCE(SUM(total_yield_earned), 0) as total_yield FROM market_resolutions"
+            "SELECT COALESCE(SUM(total_yield_earned), 0) as total_yield FROM market_resolutions",
         )
         .fetch_one(&self.pool)
         .await
         .context("Failed to fetch yield stats")?;
 
-        let total_yield_earned: sqlx::types::BigDecimal = yield_row.try_get::<sqlx::types::BigDecimal, _>("total_yield")
+        let total_yield_earned: sqlx::types::BigDecimal = yield_row
+            .try_get::<sqlx::types::BigDecimal, _>("total_yield")
             .unwrap_or_else(|_| sqlx::types::BigDecimal::from(0));
 
         Ok(PlatformStats {
@@ -229,11 +239,9 @@ impl Database {
         })
     }
 
-    
-
     pub async fn get_bets(&self, params: &PaginationParams) -> Result<Vec<Bet>> {
         let bets = sqlx::query_as::<_, Bet>(
-            "SELECT * FROM bets ORDER BY transaction_version DESC LIMIT $1 OFFSET $2"
+            "SELECT * FROM bets ORDER BY transaction_version DESC LIMIT $1 OFFSET $2",
         )
         .bind(params.limit)
         .bind(params.offset)
@@ -245,18 +253,20 @@ impl Database {
     }
 
     pub async fn get_bet_by_id(&self, bet_id: i64) -> Result<Option<Bet>> {
-        let bet = sqlx::query_as::<_, Bet>(
-            "SELECT * FROM bets WHERE bet_id = $1"
-        )
-        .bind(bet_id)
-        .fetch_optional(&self.pool)
-        .await
-        .context("Failed to fetch bet")?;
+        let bet = sqlx::query_as::<_, Bet>("SELECT * FROM bets WHERE bet_id = $1")
+            .bind(bet_id)
+            .fetch_optional(&self.pool)
+            .await
+            .context("Failed to fetch bet")?;
 
         Ok(bet)
     }
 
-    pub async fn get_bets_by_user(&self, user_addr: &str, params: &PaginationParams) -> Result<Vec<Bet>> {
+    pub async fn get_bets_by_user(
+        &self,
+        user_addr: &str,
+        params: &PaginationParams,
+    ) -> Result<Vec<Bet>> {
         let bets = sqlx::query_as::<_, Bet>(
             "SELECT * FROM bets WHERE user_addr = $1 ORDER BY transaction_version DESC LIMIT $2 OFFSET $3"
         )
@@ -270,7 +280,11 @@ impl Database {
         Ok(bets)
     }
 
-    pub async fn get_bets_by_market(&self, market_id: i64, params: &PaginationParams) -> Result<Vec<Bet>> {
+    pub async fn get_bets_by_market(
+        &self,
+        market_id: i64,
+        params: &PaginationParams,
+    ) -> Result<Vec<Bet>> {
         let bets = sqlx::query_as::<_, Bet>(
             "SELECT * FROM bets WHERE market_id = $1 ORDER BY transaction_version DESC LIMIT $2 OFFSET $3"
         )
@@ -287,13 +301,13 @@ impl Database {
     pub async fn get_user_stats(&self, user_addr: &str) -> Result<UserStats> {
         let bet_row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COALESCE(COUNT(*), 0) as total_bets,
                 COALESCE(SUM(amount), 0) as total_wagered,
                 COALESCE(COUNT(DISTINCT market_id), 0) as markets_participated
             FROM bets
             WHERE user_addr = $1
-            "#
+            "#,
         )
         .bind(user_addr)
         .fetch_one(&self.pool)
@@ -304,17 +318,16 @@ impl Database {
         let total_wagered: i64 = bet_row.try_get("total_wagered")?;
         let markets_participated: i64 = bet_row.try_get("markets_participated")?;
 
-        
         let outcome_row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*) FILTER (WHERE b.claimed = true AND b.winning_amount > 0) as wins,
                 COUNT(*) FILTER (WHERE m.resolved = true AND b.claimed = false) as losses,
                 COUNT(*) FILTER (WHERE m.resolved = false OR m.resolved IS NULL) as pending
             FROM bets b
             JOIN markets m ON b.market_id = m.market_id
             WHERE b.user_addr = $1
-            "#
+            "#,
         )
         .bind(user_addr)
         .fetch_one(&self.pool)
@@ -327,12 +340,12 @@ impl Database {
 
         let winnings_row = sqlx::query(
             r#"
-            SELECT 
+            SELECT
                 COALESCE(SUM(winning_amount), 0) as total_winnings,
                 COALESCE(SUM(yield_share), 0) as total_yield_earned
             FROM winnings_claims
             WHERE user_addr = $1
-            "#
+            "#,
         )
         .bind(user_addr)
         .fetch_one(&self.pool)
@@ -357,7 +370,7 @@ impl Database {
 
     pub async fn get_recent_bets(&self, limit: i64) -> Result<Vec<Bet>> {
         let bets = sqlx::query_as::<_, Bet>(
-            "SELECT * FROM bets ORDER BY transaction_version DESC LIMIT $1"
+            "SELECT * FROM bets ORDER BY transaction_version DESC LIMIT $1",
         )
         .bind(limit)
         .fetch_all(&self.pool)
@@ -367,16 +380,18 @@ impl Database {
         Ok(bets)
     }
 
-    
-
     pub async fn get_sync_status(&self) -> Result<Vec<SyncStatus>> {
         let statuses = vec![
             self.get_table_status("markets", "MarketCreated").await?,
             self.get_table_status("bets", "BetPlaced").await?,
-            self.get_table_status("market_resolutions", "MarketResolved").await?,
-            self.get_table_status("winnings_claims", "WinningsClaimed").await?,
-            self.get_table_status("yield_deposits", "YieldDeposited").await?,
-            self.get_table_status("protocol_fees", "ProtocolFeeCollected").await?,
+            self.get_table_status("market_resolutions", "MarketResolved")
+                .await?,
+            self.get_table_status("winnings_claims", "WinningsClaimed")
+                .await?,
+            self.get_table_status("yield_deposits", "YieldDeposited")
+                .await?,
+            self.get_table_status("protocol_fees", "ProtocolFeeCollected")
+                .await?,
         ];
 
         Ok(statuses)
@@ -410,7 +425,7 @@ impl Database {
             .fetch_one(&self.pool)
             .await
             .context("Database health check failed")?;
-        
+
         Ok(true)
     }
 }

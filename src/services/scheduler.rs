@@ -64,16 +64,27 @@ impl Scheduler {
         Self { pool, config }
     }
 
-    
     pub async fn start(self: Arc<Self>) {
         info!("🚀 Starting scheduler with background jobs");
-        info!("   - Indexer sync: {} (interval: {}s)", 
-              if self.config.enable_indexer_sync { "enabled" } else { "disabled" },
-              self.config.indexer_sync_interval_secs);
-        info!("   - Yield calculation: {} (interval: {}s)",
-              if self.config.enable_yield_calc { "enabled" } else { "disabled" },
-              self.config.yield_calc_interval_secs);
-        
+        info!(
+            "   - Indexer sync: {} (interval: {}s)",
+            if self.config.enable_indexer_sync {
+                "enabled"
+            } else {
+                "disabled"
+            },
+            self.config.indexer_sync_interval_secs
+        );
+        info!(
+            "   - Yield calculation: {} (interval: {}s)",
+            if self.config.enable_yield_calc {
+                "enabled"
+            } else {
+                "disabled"
+            },
+            self.config.yield_calc_interval_secs
+        );
+
         let sync_scheduler = Arc::clone(&self);
         let yield_scheduler = Arc::clone(&self);
         let db_event_scheduler = Arc::clone(&self);
@@ -94,12 +105,15 @@ impl Scheduler {
             tokio::spawn(async move {
                 let mut interval = time::interval(Duration::from_secs(interval_secs));
                 let mut sync_count = 0u64;
-                
+
                 loop {
                     interval.tick().await;
                     sync_count += 1;
-                    info!("🔄 [Sync Job #{}] Running indexer database sync", sync_count);
-                    
+                    info!(
+                        "🔄 [Sync Job #{}] Running indexer database sync",
+                        sync_count
+                    );
+
                     let sync_service = BlockchainSyncService::new(sync_scheduler.pool.clone());
                     match sync_service.run_full_sync().await {
                         Ok(summary) => {
@@ -114,7 +128,10 @@ impl Scheduler {
                                 // Log details of what was synced
                                 for result in &summary.results {
                                     if result.new_events > 0 {
-                                        info!("   └─ {}: {} new items", result.event_type, result.new_events);
+                                        info!(
+                                            "   └─ {}: {} new items",
+                                            result.event_type, result.new_events
+                                        );
                                     }
                                 }
                             } else {
@@ -138,16 +155,19 @@ impl Scheduler {
             tokio::spawn(async move {
                 let mut interval = time::interval(Duration::from_secs(interval_secs));
                 let mut calc_count = 0u64;
-                
+
                 loop {
                     interval.tick().await;
                     calc_count += 1;
                     info!("📊 [Yield Job #{}] Running yield calculation", calc_count);
-                    
+
                     let yield_service = YieldService::new(yield_scheduler.pool.clone());
                     match yield_service.calculate_all_market_yields().await {
                         Ok(count) => {
-                            info!("✅ [Yield Job #{}] Calculated yields for {} markets", calc_count, count);
+                            info!(
+                                "✅ [Yield Job #{}] Calculated yields for {} markets",
+                                calc_count, count
+                            );
                         }
                         Err(e) => {
                             error!("❌ [Yield Job #{}] Failed: {}", calc_count, e);
@@ -155,7 +175,10 @@ impl Scheduler {
                     }
                 }
             });
-            info!("✅ Yield calculation job started (every {}s)", interval_secs);
+            info!(
+                "✅ Yield calculation job started (every {}s)",
+                interval_secs
+            );
         } else {
             warn!("⚠️  Yield calculation job is disabled");
         }

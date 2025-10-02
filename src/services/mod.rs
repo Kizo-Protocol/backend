@@ -10,9 +10,9 @@ pub mod market_seeder;
 pub mod realtime_sync;
 pub mod scheduler;
 pub mod user_service;
+pub mod user_yield_calculator;
 pub mod yield_calculator;
 pub mod yield_service;
-pub mod user_yield_calculator;
 
-pub use yield_service::YieldService;
 pub use user_yield_calculator::UserYieldCalculator;
+pub use yield_service::YieldService;

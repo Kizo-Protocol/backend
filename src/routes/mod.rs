@@ -1,26 +1,19 @@
-use axum::{
-    extract::State,
-    response::Json,
-    routing::get,
-    Router,
-};
+use axum::{extract::State, response::Json, routing::get, Router};
 use serde_json::{json, Value};
 use utoipa;
 
 use crate::db::Database;
 use crate::error::AppError;
 
-
 mod auth;
-mod blockchain;
-pub mod markets;
 pub mod bets;
+mod blockchain;
 pub mod charts;
-pub mod sync;
-pub mod protocols;
-pub mod yields;
+pub mod markets;
 pub mod prices;
-
+pub mod protocols;
+pub mod sync;
+pub mod yields;
 
 pub fn create_router(db: Database) -> Router {
     Router::new()
@@ -38,7 +31,6 @@ pub fn create_router(db: Database) -> Router {
         .with_state(db)
 }
 
-
 async fn api_info() -> Result<Json<Value>, AppError> {
     Ok(Json(json!({
         "name": "Kizo Prediction Markets API",
@@ -46,7 +38,6 @@ async fn api_info() -> Result<Json<Value>, AppError> {
         "status": "operational"
     })))
 }
-
 
 #[utoipa::path(
     get,
@@ -58,10 +49,7 @@ async fn api_info() -> Result<Json<Value>, AppError> {
     )
 )]
 async fn health_check(State(db): State<Database>) -> Result<Json<Value>, AppError> {
-    
-    let result = sqlx::query!("SELECT 1 as check")
-        .fetch_one(db.pool())
-        .await;
+    let result = sqlx::query!("SELECT 1 as check").fetch_one(db.pool()).await;
 
     match result {
         Ok(_) => Ok(Json(json!({
@@ -74,6 +62,6 @@ async fn health_check(State(db): State<Database>) -> Result<Json<Value>, AppErro
             "database": "disconnected",
             "error": e.to_string(),
             "timestamp": chrono::Utc::now().to_rfc3339()
-        })))
+        }))),
     }
 }

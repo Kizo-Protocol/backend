@@ -1,5 +1,5 @@
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::OpenApi;
-use utoipa::openapi::security::{SecurityScheme, HttpBuilder, HttpAuthScheme};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -20,26 +20,26 @@ use utoipa::openapi::security::{SecurityScheme, HttpBuilder, HttpAuthScheme};
         (url = "https://api.kizo.io", description = "Production server")
     ),
     paths(
-        
+
         crate::routes::health_check,
-        
-        
+
+
         crate::routes::markets::get_markets,
         crate::routes::markets::get_market_by_identifier,
         crate::routes::markets::get_platform_stats,
-        
-        
+
+
         crate::routes::protocols::get_bets_with_filters,
-        
-        
+
+
         crate::routes::protocols::get_protocols,
         crate::routes::protocols::get_protocol_by_id,
-        
-        
+
+
         crate::routes::yields::get_yields,
         crate::routes::yields::get_yield_protocols,
-        
-        
+
+
         crate::routes::charts::get_market_chart,
         crate::routes::charts::get_market_probability,
         crate::routes::charts::get_market_volume,
@@ -47,7 +47,7 @@ use utoipa::openapi::security::{SecurityScheme, HttpBuilder, HttpAuthScheme};
     ),
     components(
         schemas(
-            
+
             crate::models::Market,
             crate::models::Bet,
             crate::models::Protocol,
@@ -55,8 +55,8 @@ use utoipa::openapi::security::{SecurityScheme, HttpBuilder, HttpAuthScheme};
             crate::models::PaginationParams,
             crate::routes::protocols::BetFilters,
             crate::routes::protocols::PlaceBetRequest,
-            
-            
+
+
             crate::models::MarketStats,
             crate::models::PlatformStats,
             crate::models::UserStats,
@@ -85,7 +85,7 @@ impl utoipa::Modify for SecurityAddon {
                     HttpBuilder::new()
                         .scheme(HttpAuthScheme::Bearer)
                         .bearer_format("JWT")
-                        .build()
+                        .build(),
                 ),
             );
         }

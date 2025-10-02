@@ -6,21 +6,24 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tracing::{info, error};
+use tracing::{error, info};
 
 use crate::{
     db::Database,
     error::AppError,
     services::{
-        market_seeder::MarketSeeder,
         aptos_contract::{AptosContractService, CreateMarketParams},
+        market_seeder::MarketSeeder,
     },
 };
 
 pub fn create_admin_router(db: Database) -> Router {
     Router::new()
         .route("/seed-markets", post(seed_markets))
-        .route("/sync-markets-to-blockchain", post(sync_markets_to_blockchain))
+        .route(
+            "/sync-markets-to-blockchain",
+            post(sync_markets_to_blockchain),
+        )
         .with_state(db)
 }
 
@@ -40,15 +43,12 @@ async fn seed_markets(
 ) -> Result<Json<Value>, AppError> {
     info!("Admin: Seed markets requested, count: {}", params.count);
 
-    
     let api_key = std::env::var("ADJACENT_API_KEY")
         .map_err(|_| AppError::Internal("ADJACENT_API_KEY not configured".to_string()))?;
 
-    
     let seeder = MarketSeeder::new(db.pool().clone(), api_key)
         .map_err(|e| AppError::Internal(format!("Failed to create seeder: {}", e)))?;
 
-    
     let result = seeder
         .seed_markets(params.count)
         .await
@@ -123,17 +123,14 @@ async fn sync_markets_to_blockchain(
 ) -> Result<Json<Value>, AppError> {
     info!("Admin: Sync markets to blockchain requested");
 
-    
     let aptos_service = AptosContractService::new()
         .map_err(|e| AppError::Internal(format!("Failed to initialize Aptos service: {}", e)))?;
 
-    
     let module_addr = std::env::var("APTOS_MODULE_ADDRESS")
         .map_err(|_| AppError::Internal("APTOS_MODULE_ADDRESS not configured".to_string()))?;
-    let protocol_selector_addr = std::env::var("APTOS_PROTOCOL_SELECTOR_ADDR")
-        .unwrap_or_else(|_| module_addr.clone());
+    let protocol_selector_addr =
+        std::env::var("APTOS_PROTOCOL_SELECTOR_ADDR").unwrap_or_else(|_| module_addr.clone());
 
-    
     let limit = params.limit.unwrap_or(10);
     let markets = sqlx::query!(
         r#"
@@ -158,18 +155,26 @@ async fn sync_markets_to_blockchain(
 
     for market in markets {
         let market_id_str = market.marketId.clone().unwrap_or_default();
-        info!("Processing market: {} - {}", market_id_str, market.question.as_deref().unwrap_or("No question"));
+        info!(
+            "Processing market: {} - {}",
+            market_id_str,
+            market.question.as_deref().unwrap_or("No question")
+        );
 
-        
         let now = chrono::Utc::now();
         let end_utc = market.endDate.and_utc();
         let duration = end_utc.signed_duration_since(now);
         let duration_seconds = duration.num_seconds().max(0) as u64;
 
-        
         let params = CreateMarketParams {
-            question: market.question.clone().unwrap_or_else(|| "Untitled Market".to_string()),
-            description: market.description.clone().unwrap_or_else(|| "No description".to_string()),
+            question: market
+                .question
+                .clone()
+                .unwrap_or_else(|| "Untitled Market".to_string()),
+            description: market
+                .description
+                .clone()
+                .unwrap_or_else(|| "No description".to_string()),
             duration_seconds,
             token_type: "0x1::aptos_coin::AptosCoin".to_string(),
             protocol_selector_addr: protocol_selector_addr.clone(),
@@ -177,9 +182,11 @@ async fn sync_markets_to_blockchain(
 
         match aptos_service.create_market(params).await {
             Ok(result) => {
-                info!("Created market on blockchain: ID {}, TX: {}", result.market_id, result.tx_hash);
+                info!(
+                    "Created market on blockchain: ID {}, TX: {}",
+                    result.market_id, result.tx_hash
+                );
 
-                
                 match sqlx::query!(
                     r#"UPDATE markets_extended SET "blockchainMarketId" = $1 WHERE id = $2"#,
                     result.market_id,

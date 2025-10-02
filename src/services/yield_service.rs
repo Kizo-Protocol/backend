@@ -1,6 +1,6 @@
 use anyhow::Result;
-use sqlx::PgPool;
 use sqlx::types::BigDecimal;
+use sqlx::PgPool;
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -32,42 +32,62 @@ impl YieldService {
         Self { pool }
     }
 
-    
     pub async fn initialize_protocols(&self) -> Result<()> {
         info!("Initializing yield protocols");
 
-        let module_address = std::env::var("APTOS_MODULE_ADDRESS")
-            .unwrap_or_else(|_| "0xaab1ca043fb6cd7b2f264f3ce32f301427e7f67b0e816b30d4e95f1e2bcbabfa".to_string());
-        
-        
-        let amnis_addr = std::env::var("AMNIS_PROTOCOL_ADDRESS")
-            .unwrap_or_else(|_| module_address.clone());
-        let kiln_addr = std::env::var("KILN_PROTOCOL_ADDRESS")
-            .unwrap_or_else(|_| module_address.clone());
-        let kofi_addr = std::env::var("KOFI_PROTOCOL_ADDRESS")
-            .unwrap_or_else(|_| module_address.clone());
+        let module_address = std::env::var("APTOS_MODULE_ADDRESS").unwrap_or_else(|_| {
+            "0xaab1ca043fb6cd7b2f264f3ce32f301427e7f67b0e816b30d4e95f1e2bcbabfa".to_string()
+        });
 
-        
+        let amnis_addr =
+            std::env::var("AMNIS_PROTOCOL_ADDRESS").unwrap_or_else(|_| module_address.clone());
+        let kiln_addr =
+            std::env::var("KILN_PROTOCOL_ADDRESS").unwrap_or_else(|_| module_address.clone());
+        let kofi_addr =
+            std::env::var("KOFI_PROTOCOL_ADDRESS").unwrap_or_else(|_| module_address.clone());
+
         let protocols = vec![
-            ("amnis", "Amnis Finance", "Liquid staking protocol for Aptos", amnis_addr, "amnis_adapter"),
-            ("kiln", "Kiln Protocol", "Staking infrastructure for Aptos", kiln_addr, "kiln_adapter"),
-            ("kofi", "Kofi Finance", "DeFi yield aggregator on Aptos", kofi_addr, "kofi_adapter"),
+            (
+                "amnis",
+                "Amnis Finance",
+                "Liquid staking protocol for Aptos",
+                amnis_addr,
+                "amnis_adapter",
+            ),
+            (
+                "kiln",
+                "Kiln Protocol",
+                "Staking infrastructure for Aptos",
+                kiln_addr,
+                "kiln_adapter",
+            ),
+            (
+                "kofi",
+                "Kofi Finance",
+                "DeFi yield aggregator on Aptos",
+                kofi_addr,
+                "kofi_adapter",
+            ),
         ];
 
         for (name, display_name, description, protocol_addr, adapter_name) in protocols {
-            
-            let apy = match self.fetch_protocol_apy(&module_address, adapter_name, &protocol_addr).await {
+            let apy = match self
+                .fetch_protocol_apy(&module_address, adapter_name, &protocol_addr)
+                .await
+            {
                 Ok(contract_apy) => {
-                    
                     let apy_percent = contract_apy as f64 / 100.0;
                     info!("Fetched APY from {} contract: {}%", name, apy_percent);
                     BigDecimal::try_from(apy_percent)?
-                },
+                }
                 Err(e) => {
-                    error!("Failed to fetch APY for {}: {}. Using database value.", name, e);
-                    
+                    error!(
+                        "Failed to fetch APY for {}: {}. Using database value.",
+                        name, e
+                    );
+
                     match sqlx::query_scalar::<_, BigDecimal>(
-                        r#"SELECT "baseApy" FROM protocols WHERE name = $1"#
+                        r#"SELECT "baseApy" FROM protocols WHERE name = $1"#,
                     )
                     .bind(name)
                     .fetch_optional(&self.pool)
@@ -75,7 +95,6 @@ impl YieldService {
                     {
                         Ok(Some(existing_apy)) => existing_apy,
                         _ => {
-                            
                             let default = match name {
                                 "amnis" => "5.5",
                                 "kiln" => "4.8",
@@ -116,21 +135,26 @@ impl YieldService {
         Ok(())
     }
 
-    
-    pub async fn update_protocol_apy_from_blockchain(&self, protocol_name: &str) -> Result<BigDecimal> {
-        let module_address = std::env::var("APTOS_MODULE_ADDRESS")
-            .unwrap_or_else(|_| "0xaab1ca043fb6cd7b2f264f3ce32f301427e7f67b0e816b30d4e95f1e2bcbabfa".to_string());
-        
-        let protocol_addr = std::env::var(format!("{}_PROTOCOL_ADDRESS", protocol_name.to_uppercase()))
-            .unwrap_or_else(|_| module_address.clone());
+    pub async fn update_protocol_apy_from_blockchain(
+        &self,
+        protocol_name: &str,
+    ) -> Result<BigDecimal> {
+        let module_address = std::env::var("APTOS_MODULE_ADDRESS").unwrap_or_else(|_| {
+            "0xaab1ca043fb6cd7b2f264f3ce32f301427e7f67b0e816b30d4e95f1e2bcbabfa".to_string()
+        });
+
+        let protocol_addr =
+            std::env::var(format!("{}_PROTOCOL_ADDRESS", protocol_name.to_uppercase()))
+                .unwrap_or_else(|_| module_address.clone());
 
         let adapter_name = format!("{}_adapter", protocol_name);
 
-        let contract_apy = self.fetch_protocol_apy(&module_address, &adapter_name, &protocol_addr).await?;
+        let contract_apy = self
+            .fetch_protocol_apy(&module_address, &adapter_name, &protocol_addr)
+            .await?;
         let apy_percent = contract_apy as f64 / 100.0;
         let apy = BigDecimal::try_from(apy_percent)?;
 
-        
         sqlx::query!(
             r#"UPDATE protocols SET "baseApy" = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE name = $2"#,
             apy,
@@ -139,11 +163,13 @@ impl YieldService {
         .execute(&self.pool)
         .await?;
 
-        info!("Updated protocol {} APY from blockchain: {}%", protocol_name, apy_percent);
+        info!(
+            "Updated protocol {} APY from blockchain: {}%",
+            protocol_name, apy_percent
+        );
         Ok(apy)
     }
 
-    
     pub async fn update_all_protocols_apy(&self) -> Result<Vec<(String, BigDecimal)>> {
         let protocols = vec!["amnis", "kiln", "kofi"];
         let mut results = Vec::new();
@@ -155,27 +181,34 @@ impl YieldService {
                     results.push((protocol.to_string(), apy));
                 }
                 Err(e) => {
-                    error!("Failed to update APY for {}: {}. Using default value.", protocol, e);
+                    error!(
+                        "Failed to update APY for {}: {}. Using default value.",
+                        protocol, e
+                    );
                     failed_protocols.push(protocol.to_string());
-                    
                 }
             }
         }
 
         if !failed_protocols.is_empty() {
-            info!("⚠️  Could not update APY from blockchain for: {}. Using default values.", failed_protocols.join(", "));
+            info!(
+                "⚠️  Could not update APY from blockchain for: {}. Using default values.",
+                failed_protocols.join(", ")
+            );
         }
-        
+
         if results.is_empty() {
             info!("⚠️  No protocols updated from blockchain. All using default values.");
         } else {
-            info!("✅ Successfully updated {} protocols from blockchain", results.len());
+            info!(
+                "✅ Successfully updated {} protocols from blockchain",
+                results.len()
+            );
         }
-        
+
         Ok(results)
     }
 
-    
     async fn fetch_protocol_apy(
         &self,
         module_address: &str,
@@ -186,10 +219,10 @@ impl YieldService {
             .unwrap_or_else(|_| "https://fullnode.testnet.aptoslabs.com/v1".to_string());
 
         let function_id = format!("{}::{}::get_current_apy", module_address, adapter_name);
-        
+
         let client = reqwest::Client::new();
         let view_url = format!("{}/view", node_url);
-        
+
         let response = client
             .post(&view_url)
             .json(&serde_json::json!({
@@ -208,7 +241,7 @@ impl YieldService {
         }
 
         let result: Vec<serde_json::Value> = response.json().await?;
-        
+
         if let Some(apy_value) = result.first() {
             if let Some(apy_str) = apy_value.as_str() {
                 return Ok(apy_str.parse::<u64>()?);
@@ -220,7 +253,6 @@ impl YieldService {
         Err(anyhow::anyhow!("Invalid APY response format"))
     }
 
-    
     pub async fn get_protocols(&self) -> Result<Vec<Protocol>> {
         let protocols = sqlx::query_as!(
             Protocol,
@@ -237,14 +269,13 @@ impl YieldService {
         Ok(protocols)
     }
 
-    
     pub async fn calculate_market_yield(
         &self,
         _market_id: i64,
         pool_size: BigDecimal,
     ) -> Result<YieldCalculation> {
         let protocols = self.get_protocols().await?;
-        
+
         if protocols.is_empty() {
             return Ok(YieldCalculation {
                 current_yield: BigDecimal::from(0),
@@ -259,12 +290,12 @@ impl YieldService {
         let mut total_yield = BigDecimal::from(0);
 
         for protocol in protocols {
-            
             let market_multiplier = BigDecimal::from(1);
             let effective_apy = &protocol.base_apy * &market_multiplier;
 
-            
-            let yield_amount = (&amount_per_protocol * &effective_apy) / BigDecimal::from(100) / BigDecimal::from(365);
+            let yield_amount = (&amount_per_protocol * &effective_apy)
+                / BigDecimal::from(100)
+                / BigDecimal::from(365);
 
             protocol_breakdown.push(ProtocolYield {
                 protocol: protocol.name,
@@ -282,7 +313,6 @@ impl YieldService {
         })
     }
 
-    
     pub async fn record_yield(
         &self,
         market_id: &str,
@@ -310,11 +340,13 @@ impl YieldService {
         .execute(&self.pool)
         .await?;
 
-        info!("Recorded yield for market {} with protocol {}", market_id, protocol_id);
+        info!(
+            "Recorded yield for market {} with protocol {}",
+            market_id, protocol_id
+        );
         Ok(())
     }
 
-    
     pub async fn calculate_all_market_yields(&self) -> Result<i64> {
         info!("Calculating yields for all active markets");
 
@@ -333,9 +365,14 @@ impl YieldService {
         let mut processed = 0;
 
         for market in markets {
-            match self.calculate_market_yield(market.blockchain_market_id.unwrap_or(0), market.total_pool_size.clone()).await {
+            match self
+                .calculate_market_yield(
+                    market.blockchain_market_id.unwrap_or(0),
+                    market.total_pool_size.clone(),
+                )
+                .await
+            {
                 Ok(yield_calc) => {
-                    
                     if let Err(e) = sqlx::query!(
                         r#"
                         UPDATE markets_extended
@@ -364,11 +401,10 @@ impl YieldService {
         Ok(processed)
     }
 
-    
     pub async fn get_yield_summary(&self) -> Result<YieldSummary> {
         let summary = sqlx::query!(
             r#"
-            SELECT 
+            SELECT
                 p.name as protocol,
                 p."displayName" as display_name,
                 COALESCE(SUM(yr.amount), 0) as total_amount,

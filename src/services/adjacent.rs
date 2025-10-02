@@ -73,7 +73,6 @@ impl AdjacentService {
         })
     }
 
-    
     pub async fn get_markets(
         &self,
         limit: usize,
@@ -113,8 +112,10 @@ impl AdjacentService {
         Ok(api_response)
     }
 
-    
-    pub async fn get_market(&self, adj_ticker: &str) -> Result<AdjacentApiResponse<AdjacentMarket>> {
+    pub async fn get_market(
+        &self,
+        adj_ticker: &str,
+    ) -> Result<AdjacentApiResponse<AdjacentMarket>> {
         let url = format!("{}/markets/{}", self.base_url, adj_ticker);
 
         let response = self
@@ -124,7 +125,10 @@ impl AdjacentService {
             .header("Content-Type", "application/json")
             .send()
             .await
-            .context(format!("Failed to fetch market {} from Adjacent API", adj_ticker))?;
+            .context(format!(
+                "Failed to fetch market {} from Adjacent API",
+                adj_ticker
+            ))?;
 
         if !response.status().is_success() {
             return Err(anyhow::anyhow!(
@@ -142,13 +146,14 @@ impl AdjacentService {
         Ok(api_response)
     }
 
-    
     pub async fn get_active_markets(
         &self,
         limit: usize,
         offset: usize,
     ) -> Result<AdjacentApiResponse<Vec<AdjacentMarket>>> {
-        let all_markets = self.get_markets(limit, offset, "updated_at", "desc").await?;
+        let all_markets = self
+            .get_markets(limit, offset, "updated_at", "desc")
+            .await?;
 
         let active_markets: Vec<AdjacentMarket> = all_markets
             .data
@@ -178,7 +183,6 @@ impl AdjacentService {
         })
     }
 
-    
     pub async fn get_quality_markets(
         &self,
         target_count: usize,
@@ -218,7 +222,6 @@ impl AdjacentService {
                 .data
                 .into_iter()
                 .filter(|market| {
-                    
                     if market.status != "active"
                         || !market
                             .status_details
@@ -229,14 +232,16 @@ impl AdjacentService {
                         return false;
                     }
 
-                    
-                    if market.description.as_ref().map(|d| d.trim().len()).unwrap_or(0)
+                    if market
+                        .description
+                        .as_ref()
+                        .map(|d| d.trim().len())
+                        .unwrap_or(0)
                         <= min_desc_length
                     {
                         return false;
                     }
 
-                    
                     if let Ok(end_date) = chrono::DateTime::parse_from_rfc3339(&market.end_date) {
                         if end_date.timestamp() <= chrono::Utc::now().timestamp() {
                             return false;
@@ -296,17 +301,12 @@ impl AdjacentService {
         })
     }
 
-    
     pub async fn get_exact_quality_markets(
         &self,
         target_count: usize,
     ) -> Result<AdjacentApiResponse<Vec<AdjacentMarket>>> {
-        info!(
-            "🎯 Attempting to find {} quality markets...",
-            target_count
-        );
+        info!("🎯 Attempting to find {} quality markets...", target_count);
 
-        
         let mut result = self.get_quality_markets(target_count, 20).await?;
 
         if result.data.len() < target_count {
@@ -324,7 +324,7 @@ impl AdjacentService {
                     target_count
                 );
                 result = self.get_quality_markets(target_count, 20).await?;
-                
+
                 if result.data.len() < target_count {
                     info!(
                         "🔄 Only found {}/{} with 20+ chars. Accepting any active markets...",
@@ -339,22 +339,16 @@ impl AdjacentService {
         Ok(result)
     }
 
-    
     pub fn validate_market(&self, market: &AdjacentMarket) -> bool {
-        
-        if market.adj_ticker.is_empty()
-            || market.market_id.is_empty()
-            || market.question.is_empty()
+        if market.adj_ticker.is_empty() || market.market_id.is_empty() || market.question.is_empty()
         {
             return false;
         }
 
-        
         if chrono::DateTime::parse_from_rfc3339(&market.end_date).is_err() {
             return false;
         }
 
-        
         if market.probability < 0.0 || market.probability > 100.0 {
             return false;
         }
@@ -362,7 +356,6 @@ impl AdjacentService {
         true
     }
 
-    
     pub async fn get_api_status(&self) -> Result<ApiStatus> {
         let url = format!("{}/health", self.base_url);
 

@@ -3,8 +3,7 @@ use axum::{
     middleware,
     response::Json,
     routing::{get, post, put},
-    Extension,
-    Router,
+    Extension, Router,
 };
 use serde_json::json;
 
@@ -13,26 +12,22 @@ use crate::{
     error::AppError,
     middleware::jwt::require_jwt,
     models::{
-        UpdateProfileRequest, UpdateProfileResponse, UpdateProfileData,
-        WalletConnectRequest, WalletConnectResponse, WalletConnectData,
+        UpdateProfileData, UpdateProfileRequest, UpdateProfileResponse, WalletConnectData,
+        WalletConnectRequest, WalletConnectResponse,
     },
     services::user_service::UserService,
     utils::jwt::{Claims, JwtService},
 };
 
 pub fn create_auth_router() -> Router<Database> {
-    
-    let public_routes = Router::new()
-        .route("/wallet", post(connect_wallet));
-    
-    
+    let public_routes = Router::new().route("/wallet", post(connect_wallet));
+
     let protected_routes = Router::new()
         .route("/me", get(get_current_user))
         .route("/profile", put(update_profile))
         .route("/refresh", post(refresh_token))
         .route_layer(middleware::from_fn(require_jwt));
-    
-    
+
     public_routes.merge(protected_routes)
 }
 
@@ -54,15 +49,12 @@ async fn connect_wallet(
     let user_service = UserService::new(db.pool().clone());
     let jwt_service = JwtService::new();
 
-    
     if payload.address.is_empty() {
         return Err(AppError::BadRequest("Address cannot be empty".to_string()));
     }
 
-    
     let user = user_service.get_or_create_user(&payload.address).await?;
 
-    
     let token = jwt_service
         .generate_token(user.id.clone(), user.address.clone())
         .map_err(|e| AppError::InternalError(format!("Failed to generate token: {}", e)))?;
@@ -91,10 +83,8 @@ async fn get_current_user(
     State(db): State<Database>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-
     let user_service = UserService::new(db.pool().clone());
-    
-    
+
     let user_with_bets = user_service.get_user_with_bets(&claims.sub).await?;
 
     Ok(Json(json!({
@@ -122,10 +112,8 @@ async fn update_profile(
     Extension(claims): Extension<Claims>,
     Json(payload): Json<UpdateProfileRequest>,
 ) -> Result<Json<UpdateProfileResponse>, AppError> {
-
     let user_service = UserService::new(db.pool().clone());
 
-    
     let user = user_service
         .update_profile(&claims.sub, payload.username, payload.avatar_url)
         .await?;
@@ -153,17 +141,14 @@ async fn refresh_token(
     State(db): State<Database>,
     Extension(claims): Extension<Claims>,
 ) -> Result<Json<serde_json::Value>, AppError> {
-
     let user_service = UserService::new(db.pool().clone());
     let jwt_service = JwtService::new();
 
-    
     let user = user_service
         .get_user_by_id(&claims.sub)
         .await?
         .ok_or_else(|| AppError::NotFound("User not found".to_string()))?;
 
-    
     let token = jwt_service
         .generate_token(user.id.clone(), user.address.clone())
         .map_err(|e| AppError::InternalError(format!("Failed to generate token: {}", e)))?;
