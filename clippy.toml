@@ -4,19 +4,12 @@ msrv = "1.70"
 # Allow some common patterns
 avoid-breaking-exported-api = false
 
-# Enable additional lints
-pedantic = true
-nursery = false
-
 # Disable overly strict lints for this codebase
 disallowed-methods = []
 disallowed-types = []
 disallowed-macros = []
 
-# Allow certain patterns common in web services
-allow = [
-    "clippy::module_name_repetitions",
-    "clippy::too_many_lines",
-    "clippy::missing_errors_doc",
-    "clippy::missing_panics_doc"
-]
+# Threshold configurations
+too-many-lines-threshold = 150
+cognitive-complexity-threshold = 30
+type-complexity-threshold = 250

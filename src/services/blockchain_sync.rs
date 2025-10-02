@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bigdecimal::{BigDecimal, ToPrimitive};
+use bigdecimal::ToPrimitive;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 use uuid::Uuid;
