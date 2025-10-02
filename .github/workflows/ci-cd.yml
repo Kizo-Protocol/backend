@@ -10,6 +10,7 @@ on:
 env:
   RUST_VERSION: "stable"
   CARGO_TERM_COLOR: always
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/kizo_test"
   
 jobs:
   pre-checks:
@@ -49,6 +50,19 @@ jobs:
     name: 'Build & Test'
     runs-on: ubuntu-latest
     needs: pre-checks
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kizo_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - name: '[INFO] : Checkout repository'
         uses: actions/checkout@v4
@@ -64,21 +78,35 @@ jobs:
         with:
           cache-on-failure: true
 
+      - name: '[INFO] : Install SQLx CLI'
+        run: |
+          cargo install sqlx-cli --no-default-features --features rustls,postgres
+
+      - name: '[INFO] : Run database migrations'
+        run: |
+          sqlx database create || true
+          sqlx migrate run
+
       - name: '[INFO] : Format code'
         run: |
           echo "[INFO] : Running cargo fmt"
           cargo fmt --all
           echo "[INFO] : Code formatting completed"
 
-      - name: '[INFO] : Skip Clippy (temporarily)'
+      - name: '[INFO] : Run Clippy linting'
         run: |
-          echo "[INFO] : Skipping Clippy linting due to SQLx database dependency"
-          echo "[INFO] : This will be re-enabled once database setup is complete"
+          echo "[INFO] : Running Clippy linting"
+          cargo clippy --all-targets --all-features -- -D warnings || {
+            echo "[WARN] : Clippy linting had warnings"
+            cargo clippy --all-targets --all-features
+          }
+          echo "[INFO] : Clippy completed"
 
-      - name: '[INFO] : Skip Build (temporarily)'
+      - name: '[INFO] : Build project'
         run: |
-          echo "[INFO] : Skipping build due to SQLx database dependency"
-          echo "[INFO] : This will be re-enabled once database setup is complete"
+          echo "[INFO] : Building backend project"
+          cargo build --verbose
+          echo "[INFO] : Build completed successfully"
 
       - name: '[INFO] : Upload build artifacts'
         if: success() && needs.pre-checks.outputs.should-deploy == 'true'
