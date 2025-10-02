@@ -1,0 +1,30 @@
+-- Migration to fix market ID structure
+-- Following the Prisma schema pattern: id (PK), marketId (Adjacent API), blockchainMarketId (blockchain)
+
+-- Rename current "marketId" to "blockchainMarketId"
+ALTER TABLE markets_extended RENAME COLUMN "marketId" TO "blockchainMarketId";
+
+-- Make "blockchainMarketId" nullable since Adjacent API markets don't have blockchain IDs
+ALTER TABLE markets_extended ALTER COLUMN "blockchainMarketId" DROP NOT NULL;
+
+-- Add "adjMarketId" column for Adjacent API market IDs
+ALTER TABLE markets_extended ADD COLUMN IF NOT EXISTS "adjMarketId" TEXT;
+
+-- Update existing rows: use "adjTicker" as "adjMarketId" for now
+UPDATE markets_extended SET "adjMarketId" = "adjTicker" WHERE "adjMarketId" IS NULL;
+
+-- Add unique constraint on "adjMarketId"
+ALTER TABLE markets_extended ADD CONSTRAINT markets_extended_adj_market_id_key UNIQUE ("adjMarketId");
+
+-- Drop the old index on "marketId" (now "blockchainMarketId")
+DROP INDEX IF EXISTS idx_markets_extended_market_id;
+
+-- Create new indexes
+CREATE INDEX IF NOT EXISTS idx_markets_extended_blockchain_market_id ON markets_extended("blockchainMarketId") WHERE "blockchainMarketId" IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_markets_extended_adj_market_id ON markets_extended("adjMarketId");
+
+-- Add comments for clarity
+COMMENT ON COLUMN markets_extended.id IS 'Primary key - UUID/CUID';
+COMMENT ON COLUMN markets_extended."adjMarketId" IS 'Market ID from Adjacent API (unique identifier for external markets)';
+COMMENT ON COLUMN markets_extended."blockchainMarketId" IS 'Market ID from blockchain contract (null for non-blockchain markets)';
+COMMENT ON COLUMN markets_extended."adjTicker" IS 'Human-readable ticker from Adjacent API';
