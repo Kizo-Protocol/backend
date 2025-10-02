@@ -100,8 +100,6 @@ CREATE TABLE IF NOT EXISTS bets_extended (
     payout NUMERIC(78, 18),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    FOREIGN KEY (bet_id) REFERENCES bets(bet_id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE INDEX idx_bets_extended_bet_id ON bets_extended(bet_id);
