@@ -1,5 +1,3 @@
-// Library exports for binaries and tests
-
 pub mod chart;
 pub mod config;
 pub mod db;

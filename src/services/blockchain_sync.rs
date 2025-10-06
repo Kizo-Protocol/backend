@@ -152,7 +152,6 @@ impl BlockchainSyncService {
                 }
             };
 
-            // Convert BigDecimal to i64 for amount
             let amount_i64 = bet.amount.to_i64().unwrap_or(0);
 
             match self
@@ -270,7 +269,6 @@ impl BlockchainSyncService {
         let odds = sqlx::types::BigDecimal::from(1);
         let amount_decimal = sqlx::types::BigDecimal::from(amount);
 
-        // Convert position string to boolean
         let position_bool = bet.position;
 
         sqlx::query!(

@@ -114,7 +114,6 @@ impl BettingService {
             tx_hash, blockchain_bet_id
         );
 
-        // Calculate odds based on current pool sizes + the new bet
         let odds = self
             .calculate_bet_odds(&market.id, params.position, &params.amount)
             .await?;
@@ -332,7 +331,6 @@ impl BettingService {
         position: bool,
         amount: &str,
     ) -> Result<f64> {
-        // Get current pool sizes
         let market = sqlx::query!(
             r#"
             SELECT "yesPoolSize", "noPoolSize", "totalPoolSize"
@@ -348,11 +346,9 @@ impl BettingService {
             .parse::<f64>()
             .map_err(|_| anyhow!("Invalid amount format"))?;
 
-        // Convert BigDecimal to f64 (stored in octas, so divide by 100_000_000)
         let yes_pool: f64 = market.yesPoolSize.to_string().parse::<f64>().unwrap_or(0.0);
         let no_pool: f64 = market.noPoolSize.to_string().parse::<f64>().unwrap_or(0.0);
 
-        // Calculate final pool sizes after the bet
         let (final_yes_pool, final_no_pool) = if position {
             (yes_pool + amount_decimal, no_pool)
         } else {
@@ -361,10 +357,6 @@ impl BettingService {
 
         let total_pool = final_yes_pool + final_no_pool;
 
-        // Calculate the payout multiplier (odds)
-        // In an AMM: payout = (total_pool / winning_pool) * bet_amount
-        // So odds (multiplier) = total_pool / winning_pool
-        // But we need to ensure minimum odds of 1.0
         let raw_odds = if position {
             if final_yes_pool > 0.0 {
                 total_pool / final_yes_pool
@@ -377,7 +369,6 @@ impl BettingService {
             1.0
         };
 
-        // Ensure odds are at least 1.0 (can't lose money on a winning bet)
         let odds = raw_odds.max(1.0);
 
         Ok(odds)

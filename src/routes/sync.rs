@@ -100,7 +100,6 @@ async fn get_event_processing_stats(State(db): State<Database>) -> Result<Json<V
     })))
 }
 
-/// Manually trigger a full sync from the indexer database
 async fn trigger_manual_sync(State(db): State<Database>) -> Result<Json<Value>, AppError> {
     info!("Manual sync triggered via API");
 
@@ -144,7 +143,6 @@ async fn trigger_manual_sync(State(db): State<Database>) -> Result<Json<Value>, 
     }
 }
 
-/// Get scheduler configuration and status
 async fn get_scheduler_status(State(db): State<Database>) -> Result<Json<Value>, AppError> {
     info!("Fetching scheduler status");
 

@@ -90,9 +90,8 @@ impl ChartService {
                     no_total: 0,
                 });
 
-            // Convert BigDecimal to i64 for amount calculations
             let amount_i64 = bet.amount.to_i64().unwrap_or(0);
-            // Parse position string as bool (assuming "true"/"false" or "yes"/"no")
+
             let is_yes_position = bet.position;
 
             if is_yes_position {
@@ -120,6 +119,9 @@ impl ChartService {
 
         let mut running_yes_total: i64 = 0;
         let mut running_no_total: i64 = 0;
+        let mut cumulative_yes_volume: i64 = 0;
+        let mut cumulative_no_volume: i64 = 0;
+        let mut cumulative_bet_count: i32 = 0;
 
         for time in times {
             let bucket = time_buckets.get(&time);
@@ -127,6 +129,9 @@ impl ChartService {
             if let Some(b) = bucket {
                 running_yes_total = b.yes_total;
                 running_no_total = b.no_total;
+                cumulative_yes_volume += b.yes_volume;
+                cumulative_no_volume += b.no_volume;
+                cumulative_bet_count += b.yes_count + b.no_count;
             }
 
             let total = running_yes_total + running_no_total;
@@ -147,23 +152,17 @@ impl ChartService {
                 value: no_prob,
             });
 
-            let (yes_vol, no_vol) = if let Some(b) = bucket {
-                (b.yes_volume as f64, b.no_volume as f64)
-            } else {
-                (0.0, 0.0)
-            };
-
             yes_volume.push(ChartDataPoint {
                 time,
-                value: yes_vol,
+                value: cumulative_yes_volume as f64,
             });
             no_volume.push(ChartDataPoint {
                 time,
-                value: no_vol,
+                value: cumulative_no_volume as f64,
             });
             total_volume.push(ChartDataPoint {
                 time,
-                value: yes_vol + no_vol,
+                value: (cumulative_yes_volume + cumulative_no_volume) as f64,
             });
 
             let yes_odd = if yes_prob > 0.0 { 1.0 / yes_prob } else { 2.0 };
@@ -178,13 +177,10 @@ impl ChartService {
                 value: no_odd,
             });
 
-            let count = if let Some(b) = bucket {
-                (b.yes_count + b.no_count) as f64
-            } else {
-                0.0
-            };
-
-            bet_count.push(ChartDataPoint { time, value: count });
+            bet_count.push(ChartDataPoint {
+                time,
+                value: cumulative_bet_count as f64,
+            });
         }
 
         Ok(MarketChartData {

@@ -8,28 +8,25 @@ use super::blockchain_sync::BlockchainSyncService;
 use super::db_event_listener::DbEventListener;
 use super::yield_service::YieldService;
 
-/// Configuration for scheduler job intervals
 #[derive(Debug, Clone)]
 pub struct SchedulerConfig {
-    /// How often to sync from indexer database (in seconds)
     pub indexer_sync_interval_secs: u64,
-    /// How often to recalculate yields (in seconds)
+
     pub yield_calc_interval_secs: u64,
-    /// Enable/disable indexer sync job
+
     pub enable_indexer_sync: bool,
-    /// Enable/disable yield calculation job
+
     pub enable_yield_calc: bool,
 }
 
 impl Default for SchedulerConfig {
     fn default() -> Self {
         Self {
-            // Default to 5 minutes for indexer sync
             indexer_sync_interval_secs: std::env::var("INDEXER_SYNC_INTERVAL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(300),
-            // Default to 30 minutes for yield calculation
+
             yield_calc_interval_secs: std::env::var("YIELD_CALC_INTERVAL_SECS")
                 .ok()
                 .and_then(|s| s.parse().ok())
@@ -89,7 +86,6 @@ impl Scheduler {
         let yield_scheduler = Arc::clone(&self);
         let db_event_scheduler = Arc::clone(&self);
 
-        // 1. Database event listener (for real-time notifications)
         tokio::spawn(async move {
             let db_listener = DbEventListener::new(db_event_scheduler.pool.clone());
             info!("🎧 Starting database event listener for real-time event processing");
@@ -99,7 +95,6 @@ impl Scheduler {
             }
         });
 
-        // 2. Periodic blockchain/indexer sync job
         if self.config.enable_indexer_sync {
             let interval_secs = self.config.indexer_sync_interval_secs;
             tokio::spawn(async move {
@@ -125,7 +120,7 @@ impl Scheduler {
                                     summary.total_errors,
                                     summary.duration_ms
                                 );
-                                // Log details of what was synced
+
                                 for result in &summary.results {
                                     if result.new_events > 0 {
                                         info!(
@@ -149,7 +144,6 @@ impl Scheduler {
             warn!("⚠️  Indexer sync job is disabled");
         }
 
-        // 3. Periodic yield calculation job
         if self.config.enable_yield_calc {
             let interval_secs = self.config.yield_calc_interval_secs;
             tokio::spawn(async move {
@@ -186,14 +180,12 @@ impl Scheduler {
         info!("✨ Scheduler started successfully - all background jobs running");
     }
 
-    /// Manually trigger an indexer sync (useful for API endpoints)
     pub async fn trigger_sync_now(&self) -> anyhow::Result<super::blockchain_sync::SyncSummary> {
         info!("🔄 Manual sync triggered");
         let sync_service = BlockchainSyncService::new(self.pool.clone());
         sync_service.run_full_sync().await
     }
 
-    /// Get scheduler status
     pub fn get_status(&self) -> SchedulerStatus {
         SchedulerStatus {
             indexer_sync_enabled: self.config.enable_indexer_sync,
